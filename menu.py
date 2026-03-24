@@ -114,6 +114,9 @@ INFO_H         = 110
 INFO_Y         = HEIGHT - INFO_H
 
 def get_script_dir():
+    # PyInstaller extracts to sys._MEIPASS when frozen, otherwise use script dir
+    if getattr(sys, 'frozen', False):
+        return sys._MEIPASS
     return os.path.dirname(os.path.abspath(__file__))
 
 def launch_game(game_idx):

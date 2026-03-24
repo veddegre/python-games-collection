@@ -1,25 +1,27 @@
 #!/usr/bin/env python3
 """
 run.py — entry point for the Games Collection.
-Works on Windows, macOS, and Linux.
+Works standalone, via PyInstaller bundle, on Windows/macOS/Linux.
 """
 import os
 import sys
 import subprocess
 
-# Suppress pygame startup message
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
-
-# Tell Python not to write .pyc / __pycache__ folders
-# This keeps the game folder clean — no compiled bytecode clutter
 sys.dont_write_bytecode = True
 os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
 
-script_dir = os.path.dirname(os.path.abspath(__file__))
-menu_path  = os.path.join(script_dir, 'menu.py')
+# PyInstaller extracts files to a temp folder (_MEIPASS) at runtime.
+# When running normally, just use the script's directory.
+if getattr(sys, 'frozen', False):
+    BASE_DIR = sys._MEIPASS
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+menu_path = os.path.join(BASE_DIR, 'menu.py')
 
 if not os.path.exists(menu_path):
-    print("Error: menu.py not found. Make sure you're running from the game folder.")
+    print("Error: menu.py not found.")
     sys.exit(1)
 
 subprocess.run([sys.executable, '-B', menu_path])
