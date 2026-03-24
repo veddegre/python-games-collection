@@ -161,8 +161,6 @@ games-collection/
 - **`scores.json`** stores high scores locally. It is in `.gitignore` so it won't be committed.
 - **`__pycache__`** is suppressed via `python -B` in the launcher scripts.
 - The Dock icon on macOS will show the Python logo rather than the custom icon. This is a macOS limitation for unsigned scripts — packaging with PyInstaller into a `.app` bundle would fix it.
-- Original games: Dodge Game, Snake, Space Asteroids, Space Defenders, Maze Explorer, Mine Field, Solitaire, Spider Solitaire, TriPeaks, Sudoku, Hangman, 2048.
-- New games built for this collection: Stack Attack, Helicopter Dash, Hyper Bounce.
 
 ---
 
