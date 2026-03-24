@@ -8,15 +8,23 @@ A collection of 15 arcade and puzzle games built with Python and pygame. Launch 
 
 ## Screenshots
 
-![Menu](screenshots/menu.png)
+<p align="center">
+  <img src="screenshots/menu.png" alt="Menu" width="800"/>
+  <br/><em>Main Menu</em>
+</p>
 
 | | | |
-|---|---|---|
-| ![Dodge Game](screenshots/dodge_game.png) | ![Snake](screenshots/snake.png) | ![Space Asteroids](screenshots/space_asteroids.png) |
-| ![Space Defenders](screenshots/space_defenders.png) | ![Helicopter Dash](screenshots/helicopter_dash.png) | ![Hyper Bounce](screenshots/hyper_bounce.png) |
-| ![Stack Attack](screenshots/stack_attack.png) | ![Maze Explorer](screenshots/maze_explorer.png) | ![Mine Field](screenshots/mine_field.png) |
-| ![Sudoku](screenshots/sudoku.png) | ![Hangman](screenshots/hangman.png) | ![2048](screenshots/2048.png) |
-| ![Solitaire](screenshots/solitaire.png) | ![Spider Solitaire](screenshots/spider_solitaire.png) | ![TriPeaks](screenshots/tripeaks.png) |
+|:---:|:---:|:---:|
+| <img src="screenshots/dodge_game.png" alt="Dodge Game" width="260"/> | <img src="screenshots/snake.png" alt="Snake" width="260"/> | <img src="screenshots/space_asteroids.png" alt="Space Asteroids" width="260"/> |
+| <p align="center">Dodge Game</p> | <p align="center">Snake</p> | <p align="center">Space Asteroids</p> |
+| <img src="screenshots/space_defenders.png" alt="Space Defenders" width="260"/> | <img src="screenshots/helicopter_dash.png" alt="Helicopter Dash" width="260"/> | <img src="screenshots/hyper_bounce.png" alt="Hyper Bounce" width="260"/> |
+| <p align="center">Space Defenders</p> | <p align="center">Helicopter Dash</p> | <p align="center">Hyper Bounce</p> |
+| <img src="screenshots/stack_attack.png" alt="Stack Attack" width="260"/> | <img src="screenshots/maze_explorer.png" alt="Maze Explorer" width="260"/> | <img src="screenshots/mine_field.png" alt="Mine Field" width="260"/> |
+| <p align="center">Stack Attack</p> | <p align="center">Maze Explorer</p> | <p align="center">Mine Field</p> |
+| <img src="screenshots/sudoku.png" alt="Sudoku" width="260"/> | <img src="screenshots/hangman.png" alt="Hangman" width="260"/> | <img src="screenshots/2048.png" alt="2048" width="260"/> |
+| <p align="center">Sudoku</p> | <p align="center">Hangman</p> | <p align="center">2048</p> |
+| <img src="screenshots/solitaire.png" alt="Solitaire" width="260"/> | <img src="screenshots/spider_solitaire.png" alt="Spider Solitaire" width="260"/> | <img src="screenshots/tripeaks.png" alt="TriPeaks" width="260"/> |
+| <p align="center">Solitaire</p> | <p align="center">Spider Solitaire</p> | <p align="center">TriPeaks</p> |
 
 ---
 
