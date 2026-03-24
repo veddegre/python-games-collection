@@ -3,11 +3,16 @@ name: Build Releases
 on:
   push:
     tags:
-      - 'v*'   # triggers on version tags like v1.0, v1.1 etc
+      - 'v*'
+
+permissions:
+  contents: write   # required to create GitHub releases and upload assets
 
 jobs:
   build-mac:
     runs-on: macos-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - uses: actions/checkout@v4
 
@@ -17,8 +22,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: |
-          pip install pygame pyinstaller
+        run: pip install pygame pyinstaller
 
       - name: Build Mac app
         run: |
@@ -35,17 +39,17 @@ jobs:
             run.py
 
       - name: Zip Mac app
-        run: |
-          cd dist
-          zip -r GamesCollection-mac.zip "GamesCollection.app"
+        run: cd dist && zip -r GamesCollection-mac.zip "GamesCollection.app"
 
-      - name: Upload Mac release
+      - name: Upload Mac release asset
         uses: softprops/action-gh-release@v2
         with:
           files: dist/GamesCollection-mac.zip
 
   build-windows:
     runs-on: windows-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - uses: actions/checkout@v4
 
@@ -55,24 +59,23 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: |
-          pip install pygame pyinstaller
+        run: pip install pygame pyinstaller
 
       - name: Build Windows exe
-        run: |
-          pyinstaller `
-            --onefile `
-            --windowed `
-            --icon=icon.png `
-            --name="GamesCollection" `
-            --add-data "*.py;." `
-            --add-data "icon.png;." `
-            --add-data "words_easy.txt;." `
-            --add-data "words_medium.txt;." `
-            --add-data "words_hard.txt;." `
-            run.py
+        run: >
+          pyinstaller
+          --onefile
+          --windowed
+          --icon=icon.png
+          --name="GamesCollection"
+          "--add-data=*.py;."
+          "--add-data=icon.png;."
+          "--add-data=words_easy.txt;."
+          "--add-data=words_medium.txt;."
+          "--add-data=words_hard.txt;."
+          run.py
 
-      - name: Upload Windows release
+      - name: Upload Windows release asset
         uses: softprops/action-gh-release@v2
         with:
           files: dist/GamesCollection.exe
