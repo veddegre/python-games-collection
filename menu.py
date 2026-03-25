@@ -120,20 +120,33 @@ def get_script_dir():
     return os.path.dirname(os.path.abspath(__file__))
 
 def launch_game(game_idx):
-    """Launch game as a subprocess — clean, reliable, no shared state issues."""
+    """Launch game as a subprocess — works both in normal and frozen (PyInstaller) mode."""
     g = GAMES[game_idx]
     full_path = os.path.join(get_script_dir(), g["file"])
     if not os.path.exists(full_path):
         print(f"File not found: {full_path}")
         return
-    # Minimise menu while game runs so only one window is visible
+
+    # When frozen by PyInstaller, sys.executable is the bundle.
+    # We bundle menu.py as the entry point and game .py files as data.
+    # The bundle includes a real Python interpreter we can call directly.
+    if getattr(sys, 'frozen', False):
+        # Find the Python interpreter bundled alongside the app
+        bundle_dir = os.path.dirname(sys.executable)
+        python_exe = os.path.join(bundle_dir, 'python3')
+        if not os.path.exists(python_exe):
+            python_exe = os.path.join(bundle_dir, 'python')
+        if not os.path.exists(python_exe):
+            python_exe = sys.executable  # fallback
+    else:
+        python_exe = sys.executable
+
     pygame.display.iconify()
     try:
-        subprocess.run([sys.executable, "-B", full_path])
+        subprocess.run([python_exe, "-B", full_path])
     except Exception as e:
         print(f"Error launching {g['file']}: {e}")
     finally:
-        # Restore menu window cleanly
         global screen
         pygame.init()
         pygame.font.init()

@@ -8,6 +8,12 @@ on:
 permissions:
   contents: write
 
+# Strategy: bundle a standalone Python + pygame + all game files together.
+# We use PyInstaller to bundle ONLY the menu as the entry point, but include
+# all game .py files as data. At runtime the menu launches games using the
+# bundled Python interpreter (sys.executable inside the bundle points to
+# the real Python, not the frozen app).
+
 jobs:
   build-mac:
     runs-on: macos-latest
@@ -38,19 +44,50 @@ jobs:
           sips -z 512 512   icon.png --out icon.iconset/icon_512x512.png
           iconutil -c icns icon.iconset -o icon.icns
 
-      - name: Build Mac app
+      - name: Write PyInstaller spec
         run: |
-          pyinstaller \
-            --onedir \
-            --windowed \
-            --icon=icon.icns \
-            --name="GamesCollection" \
-            --add-data "*.py:." \
-            --add-data "icon.png:." \
-            --add-data "words_easy.txt:." \
-            --add-data "words_medium.txt:." \
-            --add-data "words_hard.txt:." \
-            run.py
+          cat > GamesCollection.spec << 'SPEC'
+          # -*- mode: python ; coding: utf-8 -*-
+          import glob, os
+          
+          # Collect all game .py files and word lists as data
+          datas = []
+          for f in glob.glob('*.py'):
+              datas.append((f, '.'))
+          for f in glob.glob('*.txt'):
+              datas.append((f, '.'))
+          datas.append(('icon.png', '.'))
+          
+          a = Analysis(
+              ['menu.py'],
+              pathex=[],
+              binaries=[],
+              datas=datas,
+              hiddenimports=['pygame'],
+              hookspath=[],
+              runtime_hooks=[],
+              excludes=[],
+          )
+          pyz = PYZ(a.pure)
+          exe = EXE(pyz, a.scripts, [],
+              exclude_binaries=True,
+              name='GamesCollection',
+              icon='icon.icns',
+              console=False,
+              windowed=True,
+          )
+          coll = COLLECT(exe, a.binaries, a.zipfiles, a.datas,
+              name='GamesCollection',
+          )
+          app = BUNDLE(coll,
+              name='GamesCollection.app',
+              icon='icon.icns',
+              bundle_identifier='com.scottvedder.gamescollection',
+          )
+          SPEC
+
+      - name: Build Mac app
+        run: pyinstaller GamesCollection.spec
 
       - name: Zip Mac app
         run: cd dist && zip -r GamesCollection-mac.zip "GamesCollection.app"
@@ -75,19 +112,45 @@ jobs:
       - name: Install dependencies
         run: pip install pygame pyinstaller Pillow
 
-      - name: Build Windows exe
-        run: >
-          pyinstaller
-          --onedir
-          --windowed
-          --icon=icon.png
-          --name="GamesCollection"
-          "--add-data=*.py;."
-          "--add-data=icon.png;."
-          "--add-data=words_easy.txt;."
-          "--add-data=words_medium.txt;."
-          "--add-data=words_hard.txt;."
-          run.py
+      - name: Write PyInstaller spec
+        shell: python
+        run: |
+          import glob
+          datas = []
+          for f in glob.glob('*.py'):
+              datas.append(f"('{f}', '.')")
+          for f in glob.glob('*.txt'):
+              datas.append(f"('{f}', '.')")
+          datas.append("('icon.png', '.')")
+          datas_str = '[' + ', '.join(datas) + ']'
+
+          spec = f"""# -*- mode: python ; coding: utf-8 -*-
+          a = Analysis(
+              ['menu.py'],
+              pathex=[],
+              binaries=[],
+              datas={datas_str},
+              hiddenimports=['pygame'],
+              hookspath=[],
+              runtime_hooks=[],
+              excludes=[],
+          )
+          pyz = PYZ(a.pure)
+          exe = EXE(pyz, a.scripts, [],
+              exclude_binaries=True,
+              name='GamesCollection',
+              icon='icon.png',
+              console=False,
+              windowed=True,
+          )
+          coll = COLLECT(exe, a.binaries, a.zipfiles, a.datas,
+              name='GamesCollection',
+          )
+          """
+          open('GamesCollection.spec', 'w').write(spec)
+
+      - name: Build Windows app
+        run: pyinstaller GamesCollection.spec
 
       - name: Zip Windows app
         run: cd dist && Compress-Archive -Path GamesCollection -DestinationPath GamesCollection-windows.zip

@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """
 run.py — entry point for the Games Collection.
-Works standalone, via PyInstaller bundle, on Windows/macOS/Linux.
+When running as scripts: launches menu.py as a subprocess.
+When frozen by PyInstaller: menu.py is the direct entry point (see spec file),
+so run.py is only used for the script/development workflow.
 """
 import os
 import sys
@@ -11,13 +13,7 @@ os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 sys.dont_write_bytecode = True
 os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
 
-# PyInstaller extracts files to a temp folder (_MEIPASS) at runtime.
-# When running normally, just use the script's directory.
-if getattr(sys, 'frozen', False):
-    BASE_DIR = sys._MEIPASS
-else:
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 menu_path = os.path.join(BASE_DIR, 'menu.py')
 
 if not os.path.exists(menu_path):
