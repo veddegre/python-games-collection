@@ -6,7 +6,7 @@ on:
       - 'v*'
 
 permissions:
-  contents: write   # required to create GitHub releases and upload assets
+  contents: write
 
 jobs:
   build-mac:
@@ -22,14 +22,28 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install pygame pyinstaller
+        run: pip install pygame pyinstaller Pillow
+
+      - name: Convert icon to icns
+        run: |
+          mkdir -p icon.iconset
+          sips -z 16 16     icon.png --out icon.iconset/icon_16x16.png
+          sips -z 32 32     icon.png --out icon.iconset/icon_16x16@2x.png
+          sips -z 32 32     icon.png --out icon.iconset/icon_32x32.png
+          sips -z 64 64     icon.png --out icon.iconset/icon_32x32@2x.png
+          sips -z 128 128   icon.png --out icon.iconset/icon_128x128.png
+          sips -z 256 256   icon.png --out icon.iconset/icon_128x128@2x.png
+          sips -z 256 256   icon.png --out icon.iconset/icon_256x256.png
+          sips -z 512 512   icon.png --out icon.iconset/icon_256x256@2x.png
+          sips -z 512 512   icon.png --out icon.iconset/icon_512x512.png
+          iconutil -c icns icon.iconset -o icon.icns
 
       - name: Build Mac app
         run: |
           pyinstaller \
-            --onefile \
+            --onedir \
             --windowed \
-            --icon=icon.png \
+            --icon=icon.icns \
             --name="GamesCollection" \
             --add-data "*.py:." \
             --add-data "icon.png:." \
@@ -59,12 +73,12 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install pygame pyinstaller
+        run: pip install pygame pyinstaller Pillow
 
       - name: Build Windows exe
         run: >
           pyinstaller
-          --onefile
+          --onedir
           --windowed
           --icon=icon.png
           --name="GamesCollection"
@@ -75,7 +89,10 @@ jobs:
           "--add-data=words_hard.txt;."
           run.py
 
+      - name: Zip Windows app
+        run: cd dist && Compress-Archive -Path GamesCollection -DestinationPath GamesCollection-windows.zip
+
       - name: Upload Windows release asset
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/GamesCollection.exe
+          files: dist/GamesCollection-windows.zip
