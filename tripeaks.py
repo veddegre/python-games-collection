@@ -8,6 +8,29 @@ from highscores import get_high_score, save_high_score
 GAME_NAME = "tripeaks"
 pygame.init()
 
+def _make_font(size, bold=False):
+    """Pick the best font for rendering Unicode card suits on each platform."""
+    import platform
+    system = platform.system()
+    if system == "Windows":
+        candidates = ["segoeuisymbol", "segoeui", "arialunicodems"]
+    elif system == "Darwin":  # macOS
+        candidates = ["applesymbols", "helvetica", "arial"]
+    else:  # Linux
+        candidates = ["dejavusans", "liberationsans", "arial"]
+    candidates.append("arial")  # final fallback
+    for name in candidates:
+        try:
+            f = pygame.font.SysFont(name, size, bold=bold)
+            test = f.render("♠♥♦♣", True, (0, 0, 0))
+            if test.get_width() > 8:
+                return f
+        except Exception:
+            pass
+    return pygame.font.SysFont(None, size)
+
+
+
 WIDTH, HEIGHT = 900, 680
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("TriPeaks Solitaire")
@@ -18,19 +41,19 @@ if os.path.exists(_icon_path):
 BG        = (0, 100, 40)
 WHITE     = (255, 255, 255)
 BLACK     = (0, 0, 0)
-RED       = (200, 0, 0)
+RED         = (210,  30,  30)
 DARK_GRAY = (70, 70, 70)
 GOLD      = (255, 215, 0)
-CARD_BG   = (240, 240, 255)
+CARD_BG     = (255, 255, 255)
 CARD_BACK = (30, 60, 180)
 SLOT_COL  = (0, 80, 30)
 SLOT_BDR  = (0, 130, 60)
 HIGHLIGHT = (255, 255, 80)
 GRAY_OUT  = (100, 120, 100)
 
-font       = pygame.font.SysFont("Arial", 17, bold=True)
-small_font = pygame.font.SysFont("Arial", 12, bold=True)
-big_font   = pygame.font.SysFont("Arial", 30, bold=True)
+font       = _make_font(19, bold=True)
+small_font = _make_font(14, bold=True)
+big_font   = _make_font(32, bold=True)
 clock      = pygame.time.Clock()
 
 CARD_W, CARD_H = 72, 95
