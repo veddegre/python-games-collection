@@ -1,6 +1,6 @@
 # Games Collection
 
-A collection of 15 arcade and puzzle games built with Python and pygame. Launch everything from a single menu — no installation beyond Python and pygame required.
+A collection of 15 arcade and puzzle games built with Python and pygame. Windows and macOS users can grab a pre-built release and play straight away. Linux users and anyone who prefers running from source just need Python and pygame.
 
 ![Python](https://img.shields.io/badge/Python-3.8%2B-blue) ![pygame](https://img.shields.io/badge/pygame-2.0%2B-green) ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
 
@@ -72,8 +72,8 @@ All games save high scores locally to `scores.json` and support **ESC to return 
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/YOUR_USERNAME/games-collection.git
-cd games-collection
+git clone https://github.com/veddegre/python-games-collection.git
+cd python-games-collection
 
 # 2. Install pygame
 pip install pygame
@@ -99,13 +99,14 @@ python hyper_bounce.py
 # etc.
 ```
 
-### Desktop shortcut
+### Pre-built releases
 
 | Platform | File | Notes |
 |----------|------|-------|
-| **Windows** | `GameCollection.bat` | Double-click to launch |
-| **macOS** | `GameCollection.command` | First run: right-click → Open (Gatekeeper) |
-| **Linux** | `GameCollection.desktop` | May need `chmod +x GameCollection.desktop` |
+| **Windows** | `GamesCollection-setup.exe` | Run the installer — creates Start Menu shortcut and desktop icon |
+| **macOS** | `GamesCollection-mac.zip` | Unzip and double-click. First run: right-click → Open (Gatekeeper) |
+| **Linux** | `python run.py` | No pre-built app — requires Python 3.8+ and pygame (see Installation) |
+| **Source** | `python run.py` | Same as Linux — works on any platform with Python and pygame installed |
 
 ---
 
@@ -145,11 +146,12 @@ games-collection/
 │
 ├── screenshots/             ← menu and game screenshots
 │
+├── app.manifest             ← Windows UTF-8 manifest (fixes card suit symbols)
 ├── requirements.txt
 ├── .gitignore               ← excludes scores.json and __pycache__
-├── GameCollection.bat
-├── GameCollection.command
-└── GameCollection.desktop
+├── GameCollection.bat       ← Windows source launcher
+├── GameCollection.command   ← macOS source launcher
+└── GameCollection.desktop   ← Linux source launcher
 ```
 
 `scores.json` is created automatically on first play and is excluded from git — each player keeps their own scores.
@@ -158,9 +160,11 @@ games-collection/
 
 ## Notes
 
+- **Windows SmartScreen warning** — Windows may show "Windows protected your PC" the first time you run the installer. Click "More info" → "Run anyway". This happens because the app isn't commercially signed. It's safe to proceed.
+- **macOS Gatekeeper warning** — On first launch, right-click the app → Open → Open. After that it launches normally.
 - **`scores.json`** stores high scores locally. It is in `.gitignore` so it won't be committed.
 - **`__pycache__`** is suppressed via `python -B` in the launcher scripts.
-- The Dock icon on macOS will show the Python logo rather than the custom icon. This is a macOS limitation for unsigned scripts — packaging with PyInstaller into a `.app` bundle would fix it.
+- The bundled Mac `.app` uses the custom icon. If running from source via `python run.py` the Dock will show the Python logo instead — that's expected for unsigned scripts.
 
 ---
 

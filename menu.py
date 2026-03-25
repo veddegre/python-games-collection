@@ -1,5 +1,16 @@
 import os
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
+import sys
+if sys.platform == "win32":
+    import os
+    os.environ["PYTHONUTF8"] = "1"
+    try:
+        import ctypes
+        ctypes.windll.kernel32.SetConsoleOutputCP(65001)
+        ctypes.windll.kernel32.SetConsoleCP(65001)
+    except Exception:
+        pass
+
 import pygame
 import importlib.util
 import subprocess

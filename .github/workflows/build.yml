@@ -8,12 +8,6 @@ on:
 permissions:
   contents: write
 
-# Strategy: bundle a standalone Python + pygame + all game files together.
-# We use PyInstaller to bundle ONLY the menu as the entry point, but include
-# all game .py files as data. At runtime the menu launches games using the
-# bundled Python interpreter (sys.executable inside the bundle points to
-# the real Python, not the frozen app).
-
 jobs:
   build-mac:
     runs-on: macos-latest
@@ -48,42 +42,22 @@ jobs:
         run: |
           cat > GamesCollection.spec << 'SPEC'
           # -*- mode: python ; coding: utf-8 -*-
-          import glob, os
-          
-          # Collect all game .py files and word lists as data
-          datas = []
-          for f in glob.glob('*.py'):
-              datas.append((f, '.'))
-          for f in glob.glob('*.txt'):
-              datas.append((f, '.'))
+          import glob
+          datas = [(f, '.') for f in glob.glob('*.py')]
+          datas += [(f, '.') for f in glob.glob('*.txt')]
           datas.append(('icon.png', '.'))
-          
-          a = Analysis(
-              ['menu.py'],
-              pathex=[],
-              binaries=[],
-              datas=datas,
-              hiddenimports=['pygame'],
-              hookspath=[],
-              runtime_hooks=[],
-              excludes=[],
-          )
+          a = Analysis(['menu.py'], pathex=[], binaries=[],
+              datas=datas, hiddenimports=['pygame'],
+              hookspath=[], runtime_hooks=[], excludes=[])
           pyz = PYZ(a.pure)
-          exe = EXE(pyz, a.scripts, [],
-              exclude_binaries=True,
-              name='GamesCollection',
-              icon='icon.icns',
-              console=False,
-              windowed=True,
-          )
+          exe = EXE(pyz, a.scripts, [], exclude_binaries=True,
+              name='GamesCollection', icon='icon.icns',
+              console=False, windowed=True)
           coll = COLLECT(exe, a.binaries, a.zipfiles, a.datas,
-              name='GamesCollection',
-          )
-          app = BUNDLE(coll,
-              name='GamesCollection.app',
+              name='GamesCollection')
+          app = BUNDLE(coll, name='GamesCollection.app',
               icon='icon.icns',
-              bundle_identifier='com.scottvedder.gamescollection',
-          )
+              bundle_identifier='com.scottvedder.gamescollection')
           SPEC
 
       - name: Build Mac app
@@ -116,46 +90,92 @@ jobs:
         shell: python
         run: |
           import glob
-          datas = []
-          for f in glob.glob('*.py'):
-              datas.append(f"('{f}', '.')")
-          for f in glob.glob('*.txt'):
-              datas.append(f"('{f}', '.')")
-          datas.append("('icon.png', '.')")
-          datas_str = '[' + ', '.join(datas) + ']'
-
+          datas = [(f, '.') for f in glob.glob('*.py')]
+          datas += [(f, '.') for f in glob.glob('*.txt')]
+          datas.append(('icon.png', '.'))
+          datas_str = repr(datas)
           spec = f"""# -*- mode: python ; coding: utf-8 -*-
-          a = Analysis(
-              ['menu.py'],
-              pathex=[],
-              binaries=[],
-              datas={datas_str},
-              hiddenimports=['pygame'],
-              hookspath=[],
-              runtime_hooks=[],
-              excludes=[],
-          )
+          a = Analysis(['menu.py'], pathex=[], binaries=[],
+              datas={datas_str}, hiddenimports=['pygame'],
+              hookspath=[], runtime_hooks=[], excludes=[])
           pyz = PYZ(a.pure)
-          exe = EXE(pyz, a.scripts, [],
-              exclude_binaries=True,
-              name='GamesCollection',
-              icon='icon.png',
-              console=False,
-              windowed=True,
-          )
+          exe = EXE(pyz, a.scripts, [], exclude_binaries=True,
+              name='GamesCollection', icon='icon.png',
+              console=False, windowed=True)
           coll = COLLECT(exe, a.binaries, a.zipfiles, a.datas,
-              name='GamesCollection',
-          )
+              name='GamesCollection')
           """
           open('GamesCollection.spec', 'w').write(spec)
 
       - name: Build Windows app
         run: pyinstaller GamesCollection.spec
 
-      - name: Zip Windows app
-        run: cd dist && Compress-Archive -Path GamesCollection -DestinationPath GamesCollection-windows.zip
+      - name: Install NSIS
+        run: choco install nsis -y
 
-      - name: Upload Windows release asset
+      - name: Write NSIS installer script
+        shell: python
+        run: |
+          # Read version from tag (e.g. v1.0 -> 1.0)
+          import os
+          tag = os.environ.get('GITHUB_REF_NAME', 'v1.0')
+          version = tag.lstrip('v')
+          nsis = f"""
+          !include "MUI2.nsh"
+
+          Name "Games Collection"
+          OutFile "GamesCollection-setup.exe"
+          InstallDir "$PROGRAMFILES64\\GamesCollection"
+          InstallDirRegKey HKLM "Software\\GamesCollection" "Install_Dir"
+          RequestExecutionLevel admin
+
+          !define MUI_ABORTWARNING
+          !define MUI_ICON "icon.png"
+
+          !insertmacro MUI_PAGE_WELCOME
+          !insertmacro MUI_PAGE_DIRECTORY
+          !insertmacro MUI_PAGE_INSTFILES
+          !insertmacro MUI_PAGE_FINISH
+
+          !insertmacro MUI_UNPAGE_CONFIRM
+          !insertmacro MUI_UNPAGE_INSTFILES
+
+          !insertmacro MUI_LANGUAGE "English"
+
+          VIProductVersion "{version}.0.0"
+          VIAddVersionKey "ProductName" "Games Collection"
+          VIAddVersionKey "FileDescription" "Games Collection Installer"
+          VIAddVersionKey "FileVersion" "{version}"
+
+          Section "Games Collection" SecMain
+            SetOutPath "$INSTDIR"
+            File /r "dist\\GamesCollection\\*.*"
+            WriteRegStr HKLM "Software\\GamesCollection" "Install_Dir" "$INSTDIR"
+            WriteUninstaller "$INSTDIR\\Uninstall.exe"
+            CreateDirectory "$SMPROGRAMS\\Games Collection"
+            CreateShortcut "$SMPROGRAMS\\Games Collection\\Games Collection.lnk" "$INSTDIR\\GamesCollection.exe"
+            CreateShortcut "$SMPROGRAMS\\Games Collection\\Uninstall.lnk" "$INSTDIR\\Uninstall.exe"
+            CreateShortcut "$DESKTOP\\Games Collection.lnk" "$INSTDIR\\GamesCollection.exe"
+          SectionEnd
+
+          Section "Uninstall"
+            Delete "$INSTDIR\\Uninstall.exe"
+            RMDir /r "$INSTDIR"
+            Delete "$SMPROGRAMS\\Games Collection\\Games Collection.lnk"
+            Delete "$SMPROGRAMS\\Games Collection\\Uninstall.lnk"
+            RMDir "$SMPROGRAMS\\Games Collection"
+            Delete "$DESKTOP\\Games Collection.lnk"
+            DeleteRegKey HKLM "Software\\GamesCollection"
+          SectionEnd
+          """
+          open('installer.nsi', 'w').write(nsis)
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+
+      - name: Build installer
+        run: makensis installer.nsi
+
+      - name: Upload Windows installer
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/GamesCollection-windows.zip
+          files: GamesCollection-setup.exe
