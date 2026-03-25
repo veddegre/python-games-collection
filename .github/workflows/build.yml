@@ -64,13 +64,15 @@ jobs:
       - name: Build Mac app
         run: pyinstaller GamesCollection.spec
 
-      - name: Zip Mac app
-        run: cd dist && zip -r GamesCollection-mac.zip "GamesCollection.app"
+      - name: Create DMG
+        run: |
+          brew install create-dmg
+          create-dmg             --volname "Games Collection"             --volicon "icon.icns"             --window-pos 200 120             --window-size 600 400             --icon-size 128             --icon "GamesCollection.app" 150 185             --hide-extension "GamesCollection.app"             --app-drop-link 450 185             --background-color "#1a1a2e"             "GamesCollection-mac.dmg"             "dist/GamesCollection.app"
 
       - name: Upload Mac release asset
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/GamesCollection-mac.zip
+          files: GamesCollection-mac.dmg
 
   build-windows:
     runs-on: windows-latest

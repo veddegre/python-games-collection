@@ -140,11 +140,13 @@ Head to the [Releases page](https://github.com/veddegre/python-games-collection/
 5. To uninstall: Start Menu → Games Collection → Uninstall, or via Add/Remove Programs
 
 **macOS**
-1. Download `GamesCollection-mac.zip`
-2. Double-click to unzip — you'll get `GamesCollection.app`
-3. Move it to your Applications folder (optional but recommended)
-4. First launch only: right-click the app → **Open** → **Open** (Gatekeeper warning — safe to proceed)
-5. After that it opens normally with a double-click
+1. Download `GamesCollection-mac.dmg`
+2. Double-click to open the disk image
+3. Drag **GamesCollection** into the **Applications** folder shortcut
+4. Eject the disk image
+5. Open from your Applications folder or Launchpad
+6. First launch only: right-click the app → **Open** → **Open** (Gatekeeper warning — safe to proceed)
+7. After that it opens normally with a double-click
 
 **Linux**
 No pre-built app is available for Linux. Follow the Installation steps below — you just need Python and pygame.
