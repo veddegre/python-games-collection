@@ -91,9 +91,27 @@ jobs:
         run: |
           brew install create-dmg
           create-dmg             --volname "Games Collection"             --volicon "icon.icns"             --window-pos 200 120             --window-size 600 400             --icon-size 128             --icon "GamesCollection.app" 150 185             --hide-extension "GamesCollection.app"             --app-drop-link 450 185             --background "dmg_background.png"             "GamesCollection-mac.dmg"             "dist/GamesCollection.app"
-          # Apply our custom icon to the .dmg file itself
-          brew install fileicon
-          fileicon set GamesCollection-mac.dmg icon.icns
+          # Apply custom icon to the .dmg file using osascript (built into macOS)
+          python3 << 'PYEOF'
+          import subprocess, os, shutil, tempfile
+
+          # Use osascript to set the file icon via Finder
+          script = """
+          use framework "AppKit"
+          use scripting additions
+          set iconPath to POSIX file "%s/icon.icns"
+          set dmgPath to POSIX file "%s/GamesCollection-mac.dmg"
+          set theImage to current application's NSImage's alloc()'s initWithContentsOfFile:(POSIX path of iconPath)
+          current application's NSWorkspace's sharedWorkspace()'s setIcon:theImage forFile:(POSIX path of dmgPath) options:0
+          """ % (os.getcwd(), os.getcwd())
+          
+          result = subprocess.run(['osascript', '-l', 'AppleScript', '-e', script], 
+                                  capture_output=True, text=True)
+          if result.returncode != 0:
+              print("osascript warning:", result.stderr)
+          else:
+              print("DMG icon set successfully")
+          PYEOF
 
       - name: Upload Mac release asset
         uses: softprops/action-gh-release@v2
