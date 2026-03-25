@@ -99,14 +99,55 @@ python hyper_bounce.py
 # etc.
 ```
 
-### Pre-built releases
+### Linux desktop shortcut
 
-| Platform | File | Notes |
-|----------|------|-------|
-| **Windows** | `GamesCollection-setup.exe` | Run the installer — creates Start Menu shortcut and desktop icon |
-| **macOS** | `GamesCollection-mac.zip` | Unzip and double-click. First run: right-click → Open (Gatekeeper) |
-| **Linux** | `python run.py` | No pre-built app — requires Python 3.8+ and pygame (see Installation) |
-| **Source** | `python run.py` | Same as Linux — works on any platform with Python and pygame installed |
+To add Games Collection to your application menu or desktop:
+
+```bash
+# Make the launcher executable
+chmod +x GameCollection.command
+
+# Copy the .desktop file to your applications menu
+cp GameCollection.desktop ~/.local/share/applications/
+
+# Or place a shortcut on your desktop
+cp GameCollection.desktop ~/Desktop/
+chmod +x ~/Desktop/GameCollection.desktop
+```
+
+You may need to edit `GameCollection.desktop` first to set the correct path:
+```bash
+# Open it and update the Exec and Icon paths to match where you put the folder
+nano GameCollection.desktop
+```
+
+The relevant lines to update:
+```
+Exec=python3 /path/to/games-collection/run.py
+Icon=/path/to/games-collection/icon.png
+Path=/path/to/games-collection
+```
+
+### Pre-built releases (Windows and macOS)
+
+Head to the [Releases page](https://github.com/veddegre/python-games-collection/releases) and download the file for your platform.
+
+**Windows**
+1. Download `GamesCollection-setup.exe`
+2. Run it — you may see a SmartScreen warning. Click **More info** → **Run anyway**
+3. Follow the installer wizard (Next → Next → Install → Finish)
+4. A shortcut appears on your Desktop and in the Start Menu under **Games Collection**
+5. To uninstall: Start Menu → Games Collection → Uninstall, or via Add/Remove Programs
+
+**macOS**
+1. Download `GamesCollection-mac.zip`
+2. Double-click to unzip — you'll get `GamesCollection.app`
+3. Move it to your Applications folder (optional but recommended)
+4. First launch only: right-click the app → **Open** → **Open** (Gatekeeper warning — safe to proceed)
+5. After that it opens normally with a double-click
+
+**Linux**
+No pre-built app is available for Linux. Follow the Installation steps below — you just need Python and pygame.
 
 ---
 

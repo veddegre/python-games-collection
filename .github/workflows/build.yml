@@ -46,6 +46,7 @@ jobs:
           datas = [(f, '.') for f in glob.glob('*.py')]
           datas += [(f, '.') for f in glob.glob('*.txt')]
           datas.append(('icon.png', '.'))
+          datas.append(('app.manifest', '.'))
           a = Analysis(['menu.py'], pathex=[], binaries=[],
               datas=datas, hiddenimports=['pygame'],
               hookspath=[], runtime_hooks=[], excludes=[])
@@ -93,6 +94,7 @@ jobs:
           datas = [(f, '.') for f in glob.glob('*.py')]
           datas += [(f, '.') for f in glob.glob('*.txt')]
           datas.append(('icon.png', '.'))
+          datas.append(('app.manifest', '.'))
           datas_str = repr(datas)
           spec = f"""# -*- mode: python ; coding: utf-8 -*-
           a = Analysis(['menu.py'], pathex=[], binaries=[],
@@ -101,7 +103,8 @@ jobs:
           pyz = PYZ(a.pure)
           exe = EXE(pyz, a.scripts, [], exclude_binaries=True,
               name='GamesCollection', icon='icon.png',
-              console=False, windowed=True)
+              console=False, windowed=True,
+              manifest='app.manifest')
           coll = COLLECT(exe, a.binaries, a.zipfiles, a.datas,
               name='GamesCollection')
           """
