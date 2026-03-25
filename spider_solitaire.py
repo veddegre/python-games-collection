@@ -9,25 +9,50 @@ GAME_NAME = "spider_solitaire"
 pygame.init()
 
 def _make_font(size, bold=False):
-    """Pick the best font for rendering Unicode card suits on each platform."""
+    """Pick a font that renders Unicode suit symbols correctly on all platforms."""
     import platform
     system = platform.system()
+
+    # Try to find a suitable font file via pygame's font matcher
+    # These are the internal pygame name strings (lowercase, no spaces)
     if system == "Windows":
-        candidates = ["segoeuisymbol", "segoeui", "arialunicodems"]
-    elif system == "Darwin":  # macOS
+        candidates = ["segoeuisymbol", "seguisym", "segoeui",
+                      "arialunicodems", "lucidасансunicode", "tahoma"]
+    elif system == "Darwin":
         candidates = ["applesymbols", "helvetica", "arial"]
-    else:  # Linux
-        candidates = ["dejavusans", "liberationsans", "arial"]
-    candidates.append("arial")  # final fallback
+    else:
+        candidates = ["dejavusans", "freesans", "liberationsans", "arial"]
+
     for name in candidates:
         try:
-            f = pygame.font.SysFont(name, size, bold=bold)
-            test = f.render("♠♥♦♣", True, (0, 0, 0))
-            if test.get_width() > 8:
-                return f
+            path = pygame.font.match_font(name)
+            if path:
+                f = pygame.font.Font(path, size)
+                # Verify glyphs actually render (not boxes)
+                test = f.render("♠♥♦♣", True, (0, 0, 0))
+                if test.get_width() > 12:
+                    return f
         except Exception:
             pass
-    return pygame.font.SysFont(None, size)
+
+    # Last resort: pygame default font (suits may show as boxes on Windows
+    # but at least the game won't crash — use text fallbacks in that case)
+    return pygame.font.SysFont("arial", size, bold=bold)
+
+
+# Map suit symbols to short text fallbacks in case font can't render them
+_SUIT_FALLBACK = {"♠": "S", "♥": "H", "♦": "D", "♣": "C"}
+
+
+def _render_suit(font, suit, color):
+    """Render a suit symbol, falling back to a letter if the glyph is missing."""
+    s = font.render(suit, True, color)
+    # If the rendered width is suspiciously small the glyph didn't render
+    test_a = font.render("A", True, color)
+    if s.get_width() < test_a.get_width() * 0.5:
+        s = font.render(_SUIT_FALLBACK.get(suit, suit), True, color)
+    return s
+
 
 
 
@@ -98,8 +123,8 @@ def draw_card(surf, card, x, y, selected=False):
     pygame.draw.rect(surf, DARK_GRAY, r, 1, border_radius=6)
     color = card_color(card)
     surf.blit(font.render(card["rank"], True, color), (x+3, y+2))
-    surf.blit(small_font.render(card["suit"], True, color), (x+3, y+20))
-    cs = big_font.render(card["suit"], True, color)
+    surf.blit(_render_suit(small_font, card["suit"], color), (x+3, y+20))
+    cs = _render_suit(big_font, card["suit"], color)
     surf.blit(cs, (x+CARD_W//2-cs.get_width()//2, y+CARD_H//2-cs.get_height()//2))
     surf.blit(font.render(card["rank"], True, color), (x+CARD_W-20, y+CARD_H-36))
 
