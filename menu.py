@@ -174,7 +174,12 @@ def launch_game(game_idx):
         if os.path.exists(_icon_path):
             pygame.display.set_icon(pygame.image.load(_icon_path))
         pygame.display.flip()
-        for _ in range(6):
+        # In frozen mode events from the just-closed game are still in the queue.
+        # Pump more aggressively and clear twice to drain them all.
+        for _ in range(10):
+            pygame.event.pump()
+        pygame.event.clear()
+        for _ in range(5):
             pygame.event.pump()
         pygame.event.clear()
 
@@ -361,12 +366,15 @@ def main():
     global screen
     scores        = get_all_scores()
     score_refresh = time.time()
-    hovered_idx   = None
-    clock         = pygame.time.Clock()
-    running       = True
+    hovered_idx     = None
+    return_cooldown = 0   # frames to ignore clicks after returning from a game
+    clock           = pygame.time.Clock()
+    running         = True
 
     while running:
         clock.tick(60)
+        if return_cooldown > 0:
+            return_cooldown -= 1
         mouse = pygame.mouse.get_pos()
 
         if time.time() - score_refresh > 2:
@@ -380,9 +388,10 @@ def main():
                 if event.key == pygame.K_ESCAPE:
                     running = False
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if hovered_idx is not None:
+                if hovered_idx is not None and return_cooldown == 0:
                     launch_game(hovered_idx)
-                    hovered_idx = None
+                    hovered_idx     = None
+                    return_cooldown = 20   # ignore clicks for ~0.3s after returning
                     scores = get_all_scores()
 
         hovered_idx = None
