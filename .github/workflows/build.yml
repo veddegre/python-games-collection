@@ -66,11 +66,26 @@ jobs:
 
       - name: Create DMG background
         run: |
-          python3 -c "
+          python3 << 'PYEOF'
           from PIL import Image, ImageDraw
-          img = Image.new('RGB', (600, 400), (26, 26, 46))
+          W, H = 600, 400
+          # Mid-blue background — dark enough to look good, light enough for icons
+          img  = Image.new('RGB', (W, H), (45, 50, 90))
+          draw = ImageDraw.Draw(img)
+          # Subtle grid dots for texture
+          for x in range(0, W, 30):
+              for y in range(0, H, 30):
+                  draw.ellipse((x-1, y-1, x+1, y+1), fill=(60, 66, 110))
+          # Arrow pointing from app icon (x=150) to Applications (x=450)
+          ax, ay = 290, 195
+          draw.polygon([(ax,ay-12),(ax+60,ay),(ax,ay+12),(ax+10,ay+4),
+                         (ax+10,ay+4),(ax+10,ay-4),(ax,ay-12)],
+                       fill=(100, 160, 255))
+          # "Drag to Applications" text below arrow
+          font = ImageDraw.ImageDraw
+          draw.text((230, 225), "Drag to Applications", fill=(160, 190, 255))
           img.save('dmg_background.png')
-          "
+          PYEOF
 
       - name: Create DMG
         run: |

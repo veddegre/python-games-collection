@@ -134,19 +134,20 @@ Head to the [Releases page](https://github.com/veddegre/python-games-collection/
 
 **Windows**
 1. Download `GamesCollection-setup.exe`
-2. Run it — you may see a SmartScreen warning. Click **More info** → **Run anyway**
-3. Follow the installer wizard (Next → Next → Install → Finish)
-4. A shortcut appears on your Desktop and in the Start Menu under **Games Collection**
-5. To uninstall: Start Menu → Games Collection → Uninstall, or via Add/Remove Programs
+2. Your browser may warn the file "isn't commonly downloaded" — click the **...** menu next to the file and choose **Keep**
+3. A second prompt may appear — click the arrow next to **Delete** and select **Keep anyway**
+4. Run the installer and follow the wizard (Next → Next → Install → Finish)
+5. A shortcut appears on your Desktop and in the Start Menu under **Games Collection**
+6. To uninstall: Start Menu → Games Collection → Uninstall, or via Add/Remove Programs
 
 **macOS**
 1. Download `GamesCollection-mac.dmg`
-2. Double-click to open the disk image
-3. Drag **GamesCollection** into the **Applications** folder shortcut
-4. Eject the disk image
-5. Open from your Applications folder or Launchpad
-6. First launch only: right-click the app → **Open** → **Open** (Gatekeeper warning — safe to proceed)
-7. After that it opens normally with a double-click
+2. Double-click to open the disk image — a window appears with the app and an Applications folder
+3. Drag **GamesCollection** into the **Applications** folder
+4. Eject the disk image (drag it to Trash or press Cmd+E)
+5. Go to Applications and double-click **GamesCollection**
+6. First launch only: macOS will say it can't verify the developer. Click **Done**, then go to **System Settings → Privacy & Security**, scroll down and click **Open Anyway**
+7. After that it opens normally
 
 **Linux**
 No pre-built app is available for Linux. Follow the Installation steps below — you just need Python and pygame.
@@ -203,8 +204,8 @@ games-collection/
 
 ## Notes
 
-- **Windows SmartScreen warning** — Windows may show "Windows protected your PC" the first time you run the installer. Click "More info" → "Run anyway". This happens because the app isn't commercially signed. It's safe to proceed.
-- **macOS Gatekeeper warning** — On first launch, right-click the app → Open → Open. After that it launches normally.
+- **Windows SmartScreen** — Your browser may flag the download as uncommon. Click **...** → **Keep**, then the arrow next to Delete → **Keep anyway**. The app is safe — it just isn't commercially signed.
+- **macOS Gatekeeper** — If blocked on first launch, go to **System Settings** → **Privacy & Security** → scroll to **Allow applications from** and click **Open Anyway**.
 - **`scores.json`** stores high scores locally. It is in `.gitignore` so it won't be committed.
 - **`__pycache__`** is suppressed via `python -B` in the launcher scripts.
 - The bundled Mac `.app` uses the custom icon. If running from source via `python run.py` the Dock will show the Python logo instead — that's expected for unsigned scripts.
