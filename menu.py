@@ -120,32 +120,47 @@ def get_script_dir():
     return os.path.dirname(os.path.abspath(__file__))
 
 def launch_game(game_idx):
-    """Launch game as a subprocess — works both in normal and frozen (PyInstaller) mode."""
+    """Launch a game.
+    - Normal mode: subprocess (clean, isolated, proven to work)
+    - Frozen mode: exec the game file in a fresh namespace within this process,
+      then fully reinit pygame afterward. This avoids needing a Python interpreter
+      on the end user's machine.
+    """
     g = GAMES[game_idx]
     full_path = os.path.join(get_script_dir(), g["file"])
     if not os.path.exists(full_path):
         print(f"File not found: {full_path}")
         return
 
-    # When frozen by PyInstaller, sys.executable is the bundle.
-    # We bundle menu.py as the entry point and game .py files as data.
-    # The bundle includes a real Python interpreter we can call directly.
-    if getattr(sys, 'frozen', False):
-        # Find the Python interpreter bundled alongside the app
-        bundle_dir = os.path.dirname(sys.executable)
-        python_exe = os.path.join(bundle_dir, 'python3')
-        if not os.path.exists(python_exe):
-            python_exe = os.path.join(bundle_dir, 'python')
-        if not os.path.exists(python_exe):
-            python_exe = sys.executable  # fallback
-    else:
-        python_exe = sys.executable
-
     pygame.display.iconify()
     try:
-        subprocess.run([python_exe, "-B", full_path])
+        if getattr(sys, 'frozen', False):
+            # Frozen: exec the game source in an isolated namespace.
+            # We set __file__ and __name__ so the game code behaves as if
+            # it was run directly (icon path resolution, __main__ guards etc).
+            source = open(full_path, 'r').read()
+            # Temporarily replace sys.exit so games can't kill the whole process
+            real_exit = sys.exit
+            sys.exit = lambda *a: None
+            try:
+                ns = {
+                    '__file__': full_path,
+                    '__name__': '__main__',
+                    '__builtins__': __builtins__,
+                }
+                exec(compile(source, full_path, 'exec'), ns)
+            except SystemExit:
+                pass
+            finally:
+                sys.exit = real_exit
+        else:
+            # Script mode: subprocess is clean and reliable
+            subprocess.run([sys.executable, "-B", full_path])
+    except SystemExit:
+        pass
     except Exception as e:
         print(f"Error launching {g['file']}: {e}")
+        import traceback; traceback.print_exc()
     finally:
         global screen
         pygame.init()
