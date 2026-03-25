@@ -214,7 +214,7 @@ games-collection/
 
 ## About this project
 
-This started as a personal project to mess around with Python and AI-assisted coding — and ended up as something my kids and I could actually sit down and play together without needing wifi, a subscription, or an app store. Nothing fancy, just a bunch of games that run locally and don't phone home.
+This started as a personal project to mess around with Python and AI-assisted coding and ended up as something my kids and I could actually sit down and play together without needing wifi, a subscription, or an app store. Nothing fancy, just a bunch of games that run locally and don't phone home.
 
 If you find it useful, fun, or want to build on it, go for it.
 
