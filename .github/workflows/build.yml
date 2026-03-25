@@ -114,7 +114,10 @@ jobs:
         run: pyinstaller GamesCollection.spec
 
       - name: Install NSIS
-        run: choco install nsis -y
+        run: |
+          choco install nsis -y
+          # Refresh PATH so makensis is found in subsequent steps
+          echo "C:\Program Files (x86)\NSIS" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Write NSIS installer script
         shell: python
@@ -176,7 +179,14 @@ jobs:
           GITHUB_REF_NAME: ${{ github.ref_name }}
 
       - name: Build installer
-        run: makensis installer.nsi
+        run: |
+          # Use full path as fallback in case PATH refresh didn't take
+          $nsis = "C:\Program Files (x86)\NSIS\makensis.exe"
+          if (Test-Path $nsis) {
+            & $nsis installer.nsi
+          } else {
+            makensis installer.nsi
+          }
 
       - name: Upload Windows installer
         uses: softprops/action-gh-release@v2
