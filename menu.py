@@ -166,21 +166,50 @@ def launch_game(game_idx):
         import traceback; traceback.print_exc()
     finally:
         global screen
+        # Reinit pygame — this can take a few seconds after a game calls pygame.quit().
+        # Show a loading screen immediately so the user knows we're coming back.
         pygame.init()
         pygame.font.init()
-        _init_fonts()
         screen = pygame.display.set_mode((WIDTH, HEIGHT))
+        screen.fill((8, 10, 28))
+        # Draw a simple "Returning to menu..." message with a spinner arc
+        _loading_font = pygame.font.SysFont("Arial", 28, bold=True)
+        _small_font   = pygame.font.SysFont("Arial", 18)
+        msg  = _loading_font.render("Returning to menu...", True, (230, 232, 255))
+        hint = _small_font.render("Loading", True, (110, 114, 150))
+        cx, cy = WIDTH // 2, HEIGHT // 2
+        screen.blit(msg,  msg.get_rect(centerx=cx, centery=cy - 30))
+        screen.blit(hint, hint.get_rect(centerx=cx, centery=cy + 20))
+        # Spinning arc drawn in two passes for a neon glow effect
+        import math as _math
+        for radius, color, width in [(38, (0, 80, 120), 6), (38, (0, 200, 255), 3)]:
+            pygame.draw.arc(screen, color,
+                (cx - radius, cy + 50, radius*2, radius*2),
+                _math.pi * 0.2, _math.pi * 1.8, width)
+        pygame.display.flip()
+        # Now do the heavier reinit work
+        _init_fonts()
         pygame.display.set_caption("Games Collection")
         if os.path.exists(_icon_path):
             pygame.display.set_icon(pygame.image.load(_icon_path))
-        pygame.display.flip()
-        # In frozen mode events from the just-closed game are still in the queue.
-        # Pump more aggressively and clear twice to drain them all.
-        for _ in range(10):
+        # Animate the spinner while draining events
+        _angle = 0.0
+        _clock = pygame.time.Clock()
+        for _frame in range(30):
+            _clock.tick(60)
+            _angle += 0.25
+            screen.fill((8, 10, 28))
+            screen.blit(msg,  msg.get_rect(centerx=cx, centery=cy - 30))
+            screen.blit(hint, hint.get_rect(centerx=cx, centery=cy + 20))
+            for radius, color, width in [(38, (0, 80, 120), 6), (38, (0, 200, 255), 3)]:
+                start = _angle
+                end   = _angle + _math.pi * 1.6
+                pygame.draw.arc(screen, color,
+                    (cx - radius, cy + 50, radius*2, radius*2),
+                    start, end, width)
+            pygame.display.flip()
             pygame.event.pump()
-        pygame.event.clear()
-        for _ in range(5):
-            pygame.event.pump()
+        screen = pygame.display.set_mode((WIDTH, HEIGHT))
         pygame.event.clear()
 
 def draw_icon(surf, icon_type, cx, cy, color, size=36):
