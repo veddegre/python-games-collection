@@ -132,7 +132,10 @@ def launch_game(game_idx):
         print(f"File not found: {full_path}")
         return
 
-    pygame.display.iconify()
+    # Only iconify in subprocess mode — in frozen mode the game runs in the
+    # same process/window so iconifying would just hide the only window
+    if not getattr(sys, 'frozen', False):
+        pygame.display.iconify()
     try:
         if getattr(sys, 'frozen', False):
             # Frozen: exec the game source in an isolated namespace.
