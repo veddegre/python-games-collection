@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 import sys
@@ -102,9 +103,9 @@ big_font   = _make_font(32, bold=True)
 clock      = pygame.time.Clock()
 
 CARD_W, CARD_H = 72, 95
-SUITS  = ["♠","♥","♦","♣"]
+SUITS  = ["\u2660","\u2665","\u2666","\u2663"]
 RANKS  = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"]
-RED_SUITS = {"♥","♦"}
+RED_SUITS = {"\u2665","\u2666"}
 
 def rank_value(card):
     return RANKS.index(card["rank"])

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 import sys
@@ -102,9 +103,9 @@ big_font   = _make_font(34, bold=True)
 clock      = pygame.time.Clock()
 
 CARD_W, CARD_H = 85, 115
-SUITS     = ["♠", "♥", "♦", "♣"]
+SUITS     = ["\u2660", "\u2665", "\u2666", "\u2663"]
 RANKS     = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"]
-RED_SUITS = {"♥","♦"}
+RED_SUITS = {"\u2665","\u2666"}
 COLS      = 10
 TAB_X     = [10 + i * 108 for i in range(COLS)]
 TAB_Y     = 140
@@ -124,7 +125,7 @@ def make_spider_deck():
     deck = []
     for _ in range(8):
         for r in RANKS:
-            deck.append({"suit": "♠", "rank": r, "face_up": False})
+            deck.append({"suit": "\u2660", "rank": r, "face_up": False})
     random.shuffle(deck)
     return deck
 
@@ -186,8 +187,8 @@ class Game:
 
     def _make_deck(self):
         deck = []
-        suits = ["♠"] * 8 if self.difficulty == 1 else \
-                ["♠","♥"] * 4 if self.difficulty == 2 else SUITS * 2
+        suits = ["\u2660"] * 8 if self.difficulty == 1 else \
+                ["\u2660","\u2665"] * 4 if self.difficulty == 2 else SUITS * 2
         for s in suits:
             for r in RANKS:
                 deck.append({"suit": s, "rank": r, "face_up": False})

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 import sys
@@ -106,10 +107,10 @@ clock      = pygame.time.Clock()
 
 CARD_W, CARD_H = 80, 110
 CARD_RADIUS    = 6
-SUITS = ["♠", "♥", "♦", "♣"]
+SUITS = ["\u2660", "\u2665", "\u2666", "\u2663"]
 RANKS = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"]
-RED_SUITS   = {"♥", "♦"}
-BLACK_SUITS = {"♠", "♣"}
+RED_SUITS   = {"\u2665", "\u2666"}
+BLACK_SUITS = {"\u2660", "\u2663"}
 
 # Layout
 STOCK_X, STOCK_Y   = 30, 30
@@ -178,7 +179,7 @@ class Game:
     def reset(self):
         deck = make_deck()
         self.tableau  = [[] for _ in range(7)]
-        self.foundations = [[] for _ in range(4)]  # ♠♥♦♣
+        self.foundations = [[] for _ in range(4)]  # \u2660\u2665\u2666\u2663
         self.stock    = []
         self.waste    = []
         self.selected = None   # (source, index) where index = card index in pile
