@@ -132,51 +132,44 @@ INFO_H         = 110
 INFO_Y         = HEIGHT - INFO_H
 
 def _restore_menu_after_game():
-    """Bring the menu back after a game exits (matches original packaged behavior)."""
+    """Bring the menu back after a game exits."""
     global screen
-    LOGGER.info("Restoring menu (frozen=%s)", getattr(sys, "frozen", False))
+    frozen = getattr(sys, "frozen", False)
+    started = time.monotonic()
+    LOGGER.info("Restoring menu (frozen=%s, pygame init=%s)", frozen, pygame.get_init())
+
+    # Fast path: keep SDL alive (games use display.quit only) and swap back to menu size.
+    if pygame.get_init():
+        try:
+            screen = pygame.display.set_mode((WIDTH, HEIGHT))
+            screen.fill(BG_DARK)
+            pygame.display.set_caption("Games Collection")
+            set_window_icon()
+            _init_fonts()
+            pygame.event.clear()
+            pygame.event.pump()
+            pygame.display.flip()
+            LOGGER.info("Menu restored (fast) in %.2fs", time.monotonic() - started)
+            return
+        except pygame.error as exc:
+            LOGGER.warning("Fast menu restore failed: %s", exc)
+
+    # Slow path: full teardown then reinit (can take many seconds on macOS).
+    try:
+        pygame.quit()
+    except Exception:
+        pass
     pygame.init()
     pygame.font.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
-    screen.fill((8, 10, 28))
-
-    import math as _math
-    _loading_font = pygame.font.SysFont("Arial", 28, bold=True)
-    _small_font = pygame.font.SysFont("Arial", 18)
-    msg = _loading_font.render("Returning to menu...", True, (230, 232, 255))
-    hint = _small_font.render("Loading", True, (110, 114, 150))
-    cx, cy = WIDTH // 2, HEIGHT // 2
-    screen.blit(msg, msg.get_rect(centerx=cx, centery=cy - 30))
-    screen.blit(hint, hint.get_rect(centerx=cx, centery=cy + 20))
-    for radius, color, width in [(38, (0, 80, 120), 6), (38, (0, 200, 255), 3)]:
-        pygame.draw.arc(
-            screen, color,
-            (cx - radius, cy + 50, radius * 2, radius * 2),
-            _math.pi * 0.2, _math.pi * 1.8, width,
-        )
-    pygame.display.flip()
-    _init_fonts()
+    screen.fill(BG_DARK)
     pygame.display.set_caption("Games Collection")
     set_window_icon()
-    _angle = 0.0
-    _clock = pygame.time.Clock()
-    for _ in range(30):
-        _clock.tick(60)
-        _angle += 0.25
-        screen.fill((8, 10, 28))
-        screen.blit(msg, msg.get_rect(centerx=cx, centery=cy - 30))
-        screen.blit(hint, hint.get_rect(centerx=cx, centery=cy + 20))
-        for radius, color, width in [(38, (0, 80, 120), 6), (38, (0, 200, 255), 3)]:
-            pygame.draw.arc(
-                screen, color,
-                (cx - radius, cy + 50, radius * 2, radius * 2),
-                _angle, _angle + _math.pi * 1.6, width,
-            )
-        pygame.display.flip()
-        pygame.event.pump()
-    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    _init_fonts()
     pygame.event.clear()
-    LOGGER.info("Menu restored successfully")
+    pygame.event.pump()
+    pygame.display.flip()
+    LOGGER.info("Menu restored (full reinit) in %.2fs", time.monotonic() - started)
 
 
 def _exec_frozen_game(full_path: str, game_file: str) -> None:
@@ -184,7 +177,21 @@ def _exec_frozen_game(full_path: str, game_file: str) -> None:
     with open(full_path, encoding="utf-8") as fh:
         source = fh.read()
     real_exit = sys.exit
+    real_quit = pygame.quit
+
+    def _soft_pygame_quit():
+        """Tear down the game window without destroying SDL (avoids 15–30s reinit)."""
+        try:
+            pygame.display.quit()
+        except pygame.error:
+            pass
+        try:
+            pygame.mixer.quit()
+        except pygame.error:
+            pass
+
     sys.exit = lambda *a: None
+    pygame.quit = _soft_pygame_quit
     try:
         exec(
             compile(source, full_path, "exec"),
@@ -214,6 +221,11 @@ def _exec_frozen_game(full_path: str, game_file: str) -> None:
         raise
     finally:
         sys.exit = real_exit
+        pygame.quit = real_quit
+        try:
+            pygame.display.quit()
+        except pygame.error:
+            pass
 
 
 def launch_game(game_idx):

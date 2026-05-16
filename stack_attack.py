@@ -302,8 +302,8 @@ def run(screen=None):
                     pass
     
     _set_window_icon()
-    
-        num_font  = pygame.font.SysFont("Arial", 22, bold=True)
+
+    num_font  = pygame.font.SysFont("Arial", 22, bold=True)
     lbl_font  = pygame.font.SysFont("Arial", 13, bold=True)
     tiny_font = pygame.font.SysFont("Arial", 11)
     big_font  = pygame.font.SysFont("Arial", 26, bold=True)
@@ -351,6 +351,10 @@ def run(screen=None):
             screen.blit(pt,(cx2-pt.get_width()//2,SH//2-30))
             screen.blit(ps,(cx2-ps.get_width()//2,SH//2+14))
         pygame.display.flip(); clock.tick(60)
+    try:
+        pygame.display.quit()
+    except pygame.error:
+        pass
     return
 
 
