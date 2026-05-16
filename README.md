@@ -57,7 +57,7 @@ A collection of 15 arcade and puzzle games built with Python and pygame. Windows
 | **Spider Solitaire** | Build 8 K-to-A runs. Choose from 1, 2 or 4 suit difficulty. | Click to select and move |
 | **TriPeaks** | Clear three peaks by playing cards ±1 from the waste pile. | Click free cards |
 
-All games save high scores locally to `scores.json` and support **ESC to return to the menu**.
+All games save high scores locally and support **ESC to return to the menu**. Packaged builds store data under your platform user folder (see [RELEASE_TESTING.md](RELEASE_TESTING.md#log-and-data-file-locations)); source installs use `scores.json` in the repo directory.
 
 ---
 
@@ -132,6 +132,8 @@ Path=/path/to/games-collection
 
 Head to the [Releases page](https://github.com/veddegre/python-games-collection/releases) and download the file for your platform.
 
+**Maintainers:** Before tagging a release, complete the [pre-release validation checklist](RELEASE_TESTING.md). Do not tag unless packaged Windows and macOS builds pass all required lifecycle tests.
+
 **Windows**
 1. Download `GamesCollection-setup.exe`
 2. Your browser may warn the file "isn't commonly downloaded" — click the **...** menu next to the file and choose **Keep**
@@ -160,7 +162,10 @@ No pre-built app is available for Linux. Follow the Installation steps below —
 games-collection/
 ├── run.py                   ← entry point
 ├── menu.py                  ← game launcher and menu
+├── game_runtime.py          ← subprocess launcher, logging, user data paths
 ├── highscores.py            ← shared score tracking
+├── RELEASE_TESTING.md       ← pre-release validation checklist
+├── tests/                   ← headless launcher tests
 ├── icon.png                 ← window icon
 │
 ├── Action games
@@ -206,7 +211,7 @@ games-collection/
 
 - **Windows SmartScreen** — Your browser may flag the download as uncommon. Click **...** → **Keep**, then the arrow next to Delete → **Keep anyway**. The app is safe — it just isn't commercially signed.
 - **macOS Gatekeeper** — If blocked on first launch, go to **System Settings** → **Privacy & Security** → scroll to **Allow applications from** and click **Open Anyway**.
-- **`scores.json`** stores high scores locally. It is in `.gitignore` so it won't be committed.
+- **High scores** are stored in a per-user data directory for packaged builds, or `scores.json` beside the repo when running from source. Score files are in `.gitignore` and are not committed.
 - **`__pycache__`** is suppressed via `python -B` in the launcher scripts.
 - The bundled Mac `.app` uses the custom icon. If running from source via `python run.py` the Dock will show the Python logo instead — that's expected for unsigned scripts.
 

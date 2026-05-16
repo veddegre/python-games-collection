@@ -2,7 +2,6 @@ import os
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 import sys
 if sys.platform == "win32":
-    import os
     os.environ["PYTHONUTF8"] = "1"
     try:
         import ctypes
@@ -11,10 +10,18 @@ if sys.platform == "win32":
     except Exception:
         pass
 
+from game_runtime import (
+    get_script_dir,
+    handle_subprocess_game_argv,
+    launch_game_subprocess,
+    setup_logging,
+)
+
+handle_subprocess_game_argv()
+
+LOGGER = setup_logging()
+
 import pygame
-import importlib.util
-import subprocess
-import sys
 import time
 from highscores import get_all_scores
 
@@ -124,104 +131,64 @@ GRID_Y         = 105
 INFO_H         = 110
 INFO_Y         = HEIGHT - INFO_H
 
-def get_script_dir():
-    # PyInstaller extracts to sys._MEIPASS when frozen, otherwise use script dir
-    if getattr(sys, 'frozen', False):
-        return sys._MEIPASS
-    return os.path.dirname(os.path.abspath(__file__))
-
-def launch_game(game_idx):
-    """Launch a game.
-    - Normal mode: subprocess (clean, isolated, proven to work)
-    - Frozen mode: exec the game file in a fresh namespace within this process,
-      then fully reinit pygame afterward. This avoids needing a Python interpreter
-      on the end user's machine.
-    """
-    g = GAMES[game_idx]
-    full_path = os.path.join(get_script_dir(), g["file"])
-    if not os.path.exists(full_path):
-        print(f"File not found: {full_path}")
-        return
-
-    # Only iconify in subprocess mode — in frozen mode the game runs in the
-    # same process/window so iconifying would just hide the only window
-    if not getattr(sys, 'frozen', False):
-        pygame.display.iconify()
+def _restore_menu_after_game():
+    """Bring the menu display back after a child game process exits."""
+    global screen
+    LOGGER.info("Restoring menu (pygame initialized=%s)", pygame.get_init())
     try:
-        if getattr(sys, 'frozen', False):
-            # Frozen: exec the game source in an isolated namespace.
-            # We set __file__ and __name__ so the game code behaves as if
-            # it was run directly (icon path resolution, __main__ guards etc).
-            source = open(full_path, 'r').read()
-            # Temporarily replace sys.exit so games can't kill the whole process
-            real_exit = sys.exit
-            sys.exit = lambda *a: None
-            try:
-                ns = {
-                    '__file__': full_path,
-                    '__name__': '__main__',
-                    '__builtins__': __builtins__,
-                }
-                exec(compile(source, full_path, 'exec'), ns)
-            except SystemExit:
-                pass
-            finally:
-                sys.exit = real_exit
-        else:
-            # Script mode: subprocess is clean and reliable
-            subprocess.run([sys.executable, "-B", full_path])
-    except SystemExit:
-        pass
-    except Exception as e:
-        print(f"Error launching {g['file']}: {e}")
-        import traceback; traceback.print_exc()
-    finally:
-        global screen
-        # Reinit pygame — this can take a few seconds after a game calls pygame.quit().
-        # Show a loading screen immediately so the user knows we're coming back.
+        if not pygame.get_init():
+            LOGGER.warning("pygame was not initialized; reinitializing")
+            pygame.init()
+            pygame.font.init()
+
+        screen = pygame.display.set_mode((WIDTH, HEIGHT))
+        screen.fill((8, 10, 28))
+        pygame.display.set_caption("Games Collection")
+        if os.path.exists(_icon_path):
+            pygame.display.set_icon(pygame.image.load(_icon_path))
+        _init_fonts()
+        pygame.event.clear()
+        pygame.event.pump()
+        pygame.display.flip()
+        LOGGER.info("Menu restored successfully")
+    except Exception:
+        LOGGER.exception("Menu restore failed; attempting full pygame reinit")
+        try:
+            if pygame.get_init():
+                pygame.quit()
+        except Exception:
+            pass
         pygame.init()
         pygame.font.init()
         screen = pygame.display.set_mode((WIDTH, HEIGHT))
-        screen.fill((8, 10, 28))
-        # Draw a simple "Returning to menu..." message with a spinner arc
-        _loading_font = pygame.font.SysFont("Arial", 28, bold=True)
-        _small_font   = pygame.font.SysFont("Arial", 18)
-        msg  = _loading_font.render("Returning to menu...", True, (230, 232, 255))
-        hint = _small_font.render("Loading", True, (110, 114, 150))
-        cx, cy = WIDTH // 2, HEIGHT // 2
-        screen.blit(msg,  msg.get_rect(centerx=cx, centery=cy - 30))
-        screen.blit(hint, hint.get_rect(centerx=cx, centery=cy + 20))
-        # Spinning arc drawn in two passes for a neon glow effect
-        import math as _math
-        for radius, color, width in [(38, (0, 80, 120), 6), (38, (0, 200, 255), 3)]:
-            pygame.draw.arc(screen, color,
-                (cx - radius, cy + 50, radius*2, radius*2),
-                _math.pi * 0.2, _math.pi * 1.8, width)
-        pygame.display.flip()
-        # Now do the heavier reinit work
         _init_fonts()
         pygame.display.set_caption("Games Collection")
         if os.path.exists(_icon_path):
             pygame.display.set_icon(pygame.image.load(_icon_path))
-        # Animate the spinner while draining events
-        _angle = 0.0
-        _clock = pygame.time.Clock()
-        for _frame in range(30):
-            _clock.tick(60)
-            _angle += 0.25
-            screen.fill((8, 10, 28))
-            screen.blit(msg,  msg.get_rect(centerx=cx, centery=cy - 30))
-            screen.blit(hint, hint.get_rect(centerx=cx, centery=cy + 20))
-            for radius, color, width in [(38, (0, 80, 120), 6), (38, (0, 200, 255), 3)]:
-                start = _angle
-                end   = _angle + _math.pi * 1.6
-                pygame.draw.arc(screen, color,
-                    (cx - radius, cy + 50, radius*2, radius*2),
-                    start, end, width)
-            pygame.display.flip()
-            pygame.event.pump()
-        screen = pygame.display.set_mode((WIDTH, HEIGHT))
         pygame.event.clear()
+
+
+def launch_game(game_idx):
+    """Launch a game in an isolated subprocess so pygame.quit() cannot break the menu."""
+    g = GAMES[game_idx]
+    full_path = os.path.join(get_script_dir(), g["file"])
+    if not os.path.exists(full_path):
+        LOGGER.error("File not found: %s", full_path)
+        return
+
+    LOGGER.info("Launching game: %s (%s)", g["name"], g["file"])
+    if not getattr(sys, "frozen", False):
+        try:
+            pygame.display.iconify()
+        except pygame.error as exc:
+            LOGGER.warning("Could not iconify menu window: %s", exc)
+
+    try:
+        launch_game_subprocess(g["file"])
+    except Exception:
+        LOGGER.exception("Error launching %s", g["file"])
+    finally:
+        _restore_menu_after_game()
 
 def draw_icon(surf, icon_type, cx, cy, color, size=36):
     if icon_type == "dodge":
