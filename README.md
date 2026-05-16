@@ -37,14 +37,14 @@ A collection of 15 arcade and puzzle games built with Python and pygame. Windows
 | **Snake** | Eat fruit and grow. Don't hit yourself. | Arrow keys |
 | **Space Asteroids** | Shoot rotating asteroids before they hit you. | ← →, Space to shoot |
 | **Space Defenders** | Waves of enemies. Watch for the boss at 20pts! | ← →, Space to shoot |
-| **Helicopter Dash** | Hold to thrust through a twisting cave. How far can you go? | Hold Space or click |
+| **Helicopter Dash** | Hold to thrust through a twisting cave. Gaps are sized for the helicopter—no impossible pinch points. | Hold Space or click, R to restart |
 | **Hyper Bounce** | Smash energy cells with an electric ball across 8 unique levels. | ← →, Space to launch |
 
 ### Puzzle
 | Game | Description | Controls |
 |------|-------------|----------|
 | **Stack Attack** | Stack falling blocks and clear rows. Deep space theme with hold piece and combos. | Arrows, Space, C hold, P pause |
-| **Maze Explorer** | Navigate a random maze in as few moves as possible. | Arrow keys |
+| **Maze Explorer** | Room-style mazes with one route; finish in as few moves and as little time as possible. | Arrow keys, R to restart |
 | **Mine Field** | Clear the minefield. First click is always safe. | Left click, right click to flag |
 | **Sudoku** | Fill the grid. Every row, column and box needs 1–9. Three difficulty levels. | Click cell, type number |
 | **Hangman** | Guess the word before the man is hung. Easy, Medium and Hard word lists. | Type letters or click keyboard |
@@ -57,7 +57,28 @@ A collection of 15 arcade and puzzle games built with Python and pygame. Windows
 | **Spider Solitaire** | Build 8 K-to-A runs. Choose from 1, 2 or 4 suit difficulty. | Click to select and move |
 | **TriPeaks** | Clear three peaks by playing cards ±1 from the waste pile. | Click free cards |
 
-All games save high scores locally and support **ESC to return to the menu**. Packaged builds store data under your platform user folder (see [RELEASE_TESTING.md](RELEASE_TESTING.md#log-and-data-file-locations)); source installs use `scores.json` in the repo directory.
+Most games save **high scores** (higher is better). **Maze Explorer** tracks **fewest moves** and **fastest time** (lower is better). **Mine Field** tracks **best completion time**. All games support **ESC to return to the menu** and **R to restart** where noted above.
+
+### Score management
+
+From the main menu, click **Manage scores** (top right) to:
+
+- View each game’s saved score on the panel
+- **Reset** an individual game (including related keys, e.g. maze moves and maze time)
+- **Reset all** scores at once
+
+Packaged builds store scores and logs under your platform user folder (see [RELEASE_TESTING.md](RELEASE_TESTING.md#log-and-data-file-locations)). Source installs use `scores.json` in the repo directory.
+
+---
+
+## Recent updates (v1.5.4)
+
+- **Maze Explorer** — Recursive-division mazes; picks the longest start→goal layout among many candidates. Scores fewest moves and best time (not highest).
+- **Helicopter Dash** — Rotor-sized collision box, minimum gap between cave walls, segment overlap checks so transitions are always passable; fixed crash when generating segments.
+- **Menu** — **Manage scores** UI (per-game and reset all); control hints wrap instead of clipping; game tiles show correct labels for time-based and move-based bests.
+- **High scores** — `save_low_score` / `get_low_score`, `clear_score` / `clear_all_scores`, legacy mine-field key migration (`minesweeper` → `minesweeper_time`).
+- **Launcher** — `game_runtime.py` handles source subprocess launch vs packaged in-process exec, logging, and user data paths; fast menu restore after games exit.
+- **Tests** — `tests/test_game_runtime.py` (path safety, migration), `tests/test_highscores.py` (save/clear logic).
 
 ---
 
@@ -177,14 +198,19 @@ No pre-built app is available for Linux. Follow the Installation steps below —
 ## Project structure
 
 ```
-games-collection/
-├── run.py                   ← entry point
-├── menu.py                  ← game launcher and menu
-├── game_runtime.py          ← subprocess launcher, logging, user data paths
-├── highscores.py            ← shared score tracking
-├── RELEASE_TESTING.md       ← pre-release validation checklist
-├── tests/                   ← headless launcher tests
-├── icon.png                 ← window icon
+python-games-collection/
+├── run.py                      ← source entry point (imports menu)
+├── menu.py                     ← main menu, game grid, score UI; PyInstaller entry for releases
+├── game_runtime.py             ← launch (subprocess vs in-process), logging, scores path, icons
+├── highscores.py               ← load/save scores, best time, low score, clear helpers
+├── RELEASE_TESTING.md          ← pre-release checklist (packaged + source tests)
+│
+├── tests/
+│   ├── test_game_runtime.py    ← resolve_game_path, subprocess cmd, score migration
+│   └── test_highscores.py      ← high/low score save, clear, best time
+│
+├── .github/workflows/
+│   └── build.yml               ← tagged releases → macOS DMG + Windows installer
 │
 ├── Action games
 │   ├── dodge_game.py
@@ -207,21 +233,34 @@ games-collection/
 │   ├── spider_solitaire.py
 │   └── tripeaks.py
 │
-├── words_easy.txt           ← Hangman word lists
+├── words_easy.txt              ← Hangman word lists
 ├── words_medium.txt
 ├── words_hard.txt
 │
-├── screenshots/             ← menu and game screenshots
+├── screenshots/                ← menu and game screenshots (README)
 │
-├── app.manifest             ← Windows UTF-8 manifest (fixes card suit symbols)
+├── icon.png                    ← window / packaging icon
+├── icon.bmp                    ← macOS-friendly window icon fallback
+├── app.manifest                ← Windows UTF-8 manifest (card suit symbols)
+├── GamesCollection.spec        ← PyInstaller spec (CI / local builds)
 ├── requirements.txt
-├── .gitignore               ← excludes scores.json and __pycache__
-├── GameCollection.bat       ← Windows source launcher
-├── GameCollection.command   ← macOS source launcher
-└── GameCollection.desktop   ← Linux source launcher
+├── setup.sh                    ← macOS/Linux venv + pygame (Python 3.8–3.13)
+├── setup.bat                   ← Windows venv + pygame
+├── GameCollection.command      ← macOS source launcher
+├── GameCollection.bat          ← Windows source launcher
+├── GameCollection.desktop      ← Linux desktop entry template
+└── .gitignore                  ← excludes scores.json, .venv, __pycache__
 ```
 
-`scores.json` is created automatically on first play and is excluded from git — each player keeps their own scores.
+`scores.json` is created on first play and is gitignored — each player keeps their own scores. Packaged apps use the user data directory instead (see [RELEASE_TESTING.md](RELEASE_TESTING.md)).
+
+### Running tests
+
+```bash
+python3 -B -m unittest discover -s tests -v
+```
+
+Same command is used in CI and in [RELEASE_TESTING.md](RELEASE_TESTING.md) before tagging a release.
 
 ---
 
@@ -229,9 +268,10 @@ games-collection/
 
 - **Windows SmartScreen** — Your browser may flag the download as uncommon. Click **...** → **Keep**, then the arrow next to Delete → **Keep anyway**. The app is safe — it just isn't commercially signed.
 - **macOS Gatekeeper** — If blocked on first launch, go to **System Settings** → **Privacy & Security** → scroll to **Allow applications from** and click **Open Anyway**.
-- **High scores** are stored in a per-user data directory for packaged builds, or `scores.json` beside the repo when running from source. Score files are in `.gitignore` and are not committed.
+- **Scores** — Packaged builds: `~/Library/Application Support/GamesCollection/` (macOS) or `%APPDATA%\GamesCollection\` (Windows). Source: `scores.json` in the repo. Use **Manage scores** on the menu to reset after upgrades if old maze entries look wrong (pre-v1.5.4 saved highest move count by mistake).
+- **Logs** — Packaged and source subprocess runs write to `games_collection.log` in the same user data folder (or repo when running from source).
 - **`__pycache__`** is suppressed via `python -B` in the launcher scripts.
-- The bundled Mac `.app` uses the custom icon. If running from source via `python run.py` the Dock will show the Python logo instead — that's expected for unsigned scripts.
+- **Icons** — Games load `icon.bmp` or `icon.png` for the window. The bundled Mac `.app` uses the packaged icon; source runs may show the Python Dock icon unless launched via `GameCollection.command`.
 
 ---
 
