@@ -68,5 +68,57 @@ def save_high_score(game_name, score):
             LOGGER.error("Failed to save high score for %s to %s: %s", game_name, scores_path(), exc)
     return False
 
+
+def get_low_score(game_name):
+    """Return best (lowest) integer score, or None if none saved."""
+    scores = load_scores()
+    val = scores.get(game_name)
+    return int(val) if val is not None else None
+
+
+def save_low_score(game_name, score):
+    """Save a score if it is a new best (lower is better)."""
+    scores = load_scores()
+    prev = scores.get(game_name)
+    if prev is not None and score >= int(prev):
+        return False
+    scores[game_name] = int(score)
+    try:
+        with open(scores_path(), "w", encoding="utf-8") as f:
+            json.dump(scores, f, indent=2)
+        return True
+    except OSError as exc:
+        LOGGER.error(
+            "Failed to save low score for %s to %s: %s", game_name, scores_path(), exc
+        )
+    return False
+
+
+def clear_score(game_name):
+    """Remove one score entry. Returns True if an entry was removed."""
+    scores = load_scores()
+    if game_name not in scores:
+        return False
+    del scores[game_name]
+    try:
+        with open(scores_path(), "w", encoding="utf-8") as f:
+            json.dump(scores, f, indent=2)
+        return True
+    except OSError as exc:
+        LOGGER.error("Failed to clear score %s: %s", game_name, exc)
+    return False
+
+
+def clear_all_scores():
+    """Remove every saved score."""
+    try:
+        with open(scores_path(), "w", encoding="utf-8") as f:
+            json.dump({}, f, indent=2)
+        return True
+    except OSError as exc:
+        LOGGER.error("Failed to clear all scores: %s", exc)
+    return False
+
+
 def get_all_scores():
     return load_scores()

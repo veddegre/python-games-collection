@@ -26,7 +26,7 @@ LOGGER = setup_logging()
 
 import pygame
 import time
-from highscores import get_all_scores
+from highscores import get_all_scores, clear_score, clear_all_scores
 
 pygame.init()
 
@@ -78,7 +78,9 @@ GAMES = [
      "description": "Waves of enemies. Watch for the boss at 20pts!",
      "controls": "Left/Right  |  Space to shoot  |  R to restart  |  ESC to menu"},
     {"name": "Maze Explorer",    "file": "maze_explorer.py",    "score_key": "maze_explorer",
-     "score_label": "Best moves", "icon_color": (255, 160, 40),  "icon": "maze",
+     "extra_score_keys": ["maze_explorer_time"],
+     "score_label": "Best moves", "lower_is_better": True,
+     "icon_color": (255, 160, 40),  "icon": "maze",
      "description": "Navigate a random maze in as few moves as possible.",
      "controls": "Arrow keys  |  R to restart  |  ESC to menu"},
     {"name": "Stack Attack",     "file": "stack_attack.py",     "score_key": "stack_attack",
@@ -94,7 +96,8 @@ GAMES = [
      "description": "Hold to thrust through a twisting cave. How far can you go?",
      "controls": "Hold Space or click to thrust  |  R to restart  |  ESC to menu"},
     {"name": "Mine Field",       "file": "mine_field.py",      "score_key": "minesweeper_time",
-     "score_label": "Best time", "icon_color": (180, 60,  60),  "icon": "mine",
+     "score_label": "Best time", "lower_is_better": True,
+     "icon_color": (180, 60,  60),  "icon": "mine",
      "description": "Clear the minefield. First click is always safe.",
      "controls": "Left click = reveal  |  Right click = flag  |  R to restart  |  ESC to menu"},
     {"name": "Solitaire",        "file": "solitaire.py",        "score_key": "solitaire",
@@ -128,8 +131,61 @@ TILE_PAD       = 10
 COLS           = 5
 GRID_X         = (WIDTH - (COLS * (TILE_W + TILE_PAD) - TILE_PAD)) // 2
 GRID_Y         = 105
-INFO_H         = 110
+INFO_H         = 120
 INFO_Y         = HEIGHT - INFO_H
+
+
+def _game_score_keys(game):
+    keys = []
+    if game.get("score_key"):
+        keys.append(game["score_key"])
+    keys.extend(game.get("extra_score_keys", []))
+    return keys
+
+
+def _format_tile_score(game, scores):
+    key = game.get("score_key")
+    if not key:
+        return None
+    label = game["score_label"]
+    val = scores.get(key)
+    if game.get("lower_is_better"):
+        parts = []
+        if val is not None:
+            if "time" in label.lower():
+                parts.append(f"{label}: {float(val):.1f}s")
+            else:
+                parts.append(f"{label}: {int(val)}")
+        for extra in game.get("extra_score_keys", []):
+            ev = scores.get(extra)
+            if ev is not None and extra != key:
+                parts.append(f"{float(ev):.1f}s")
+        return "  |  ".join(parts) if parts else None
+    if val is None:
+        return None
+    if "time" in label.lower():
+        return f"{label}: {float(val):.1f}s"
+    return f"{label}: {int(val)}"
+
+
+def _wrap_text_lines(font, text, max_width):
+    words = text.split()
+    if not words:
+        return []
+    lines = []
+    current = []
+    for word in words:
+        trial = " ".join(current + [word]) if current else word
+        if font.size(trial)[0] <= max_width:
+            current.append(word)
+        else:
+            if current:
+                lines.append(" ".join(current))
+            current = [word]
+    if current:
+        lines.append(" ".join(current))
+    return lines
+
 
 def _restore_menu_after_game():
     """Bring the menu back after a game exits."""
@@ -390,12 +446,8 @@ def draw_tile(surf, game_idx, tx, ty, hovered, scores):
     draw_icon(surf, g["icon"], tx + TILE_W//2, ty + 46, color)
     name_s = menu_font.render(g["name"], True, WHITE if hovered else LIGHT_GRAY)
     surf.blit(name_s, name_s.get_rect(centerx=tx+TILE_W//2, y=ty+88))
-    key = g.get("score_key")
-    val = scores.get(key) if key else None
-    if val is not None:
-        label = g["score_label"]
-        val_str = (f"{label}: {float(val):.0f}s" if "time" in label.lower()
-                   else f"{label}: {int(val)}")
+    val_str = _format_tile_score(g, scores)
+    if val_str:
         sc_s = small_font.render(val_str, True, GOLD)
         surf.blit(sc_s, sc_s.get_rect(centerx=tx+TILE_W//2, y=ty+110))
     else:
@@ -421,18 +473,86 @@ def draw_info_bar(surf, game_idx):
     pygame.draw.line(surf, ACCENT, (0, INFO_Y), (WIDTH, INFO_Y), 1)
     if game_idx is None:
         hint = info_font.render(
-            "Hover a game to see details  —  click to play  —  ESC to quit", True, GRAY)
+            "Hover a game to see details  —  click to play  —  Manage scores (top right)",
+            True, GRAY)
         surf.blit(hint, hint.get_rect(center=(WIDTH//2, INFO_Y + INFO_H//2)))
         return
     g = GAMES[game_idx]
+    left_w = WIDTH // 2 - 50
+    right_x = WIDTH // 2 + 10
+    right_w = WIDTH - right_x - 20
     name_s = title_font.render(g["name"], True, WHITE)
-    surf.blit(name_s, (30, INFO_Y + 12))
-    desc_s = info_font.render(g["description"], True, LIGHT_GRAY)
-    surf.blit(desc_s, (30, INFO_Y + 78))
+    surf.blit(name_s, (30, INFO_Y + 10))
+    y = INFO_Y + 48
+    for line in _wrap_text_lines(info_font, g["description"], left_w):
+        surf.blit(info_font.render(line, True, LIGHT_GRAY), (30, y))
+        y += 20
     ctrl_lbl = small_font.render("CONTROLS", True, ACCENT)
-    surf.blit(ctrl_lbl, (WIDTH - 420, INFO_Y + 14))
-    ctrl_s = info_font.render(g["controls"], True, LIGHT_GRAY)
-    surf.blit(ctrl_s, (WIDTH - 420, INFO_Y + 34))
+    surf.blit(ctrl_lbl, (right_x, INFO_Y + 10))
+    cy = INFO_Y + 30
+    for line in _wrap_text_lines(info_font, g["controls"], right_w):
+        surf.blit(info_font.render(line, True, LIGHT_GRAY), (right_x, cy))
+        cy += 20
+
+
+def _score_panel_format(game, scores):
+    val_str = _format_tile_score(game, scores)
+    return val_str if val_str else "No score"
+
+
+def _scores_panel_layout():
+    panel = pygame.Rect(80, 70, WIDTH - 160, HEIGHT - 140)
+    row_y = panel.y + 88
+    row_h = 28
+    reset_rects = []
+    for i, g in enumerate(GAMES):
+        if not _game_score_keys(g):
+            continue
+        if row_y > panel.bottom - 70:
+            break
+        reset_rects.append((i, pygame.Rect(panel.right - 100, row_y, 80, row_h)))
+        row_y += row_h + 4
+    all_btn = pygame.Rect(panel.centerx - 200, panel.bottom - 52, 180, 36)
+    close_btn = pygame.Rect(panel.centerx + 20, panel.bottom - 52, 120, 36)
+    return panel, reset_rects, all_btn, close_btn
+
+
+def draw_scores_panel(surf, scores, hover_reset):
+    overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, 170))
+    surf.blit(overlay, (0, 0))
+    panel, reset_rects, all_btn, close_btn = _scores_panel_layout()
+    pygame.draw.rect(surf, BG_PANEL, panel, border_radius=12)
+    pygame.draw.rect(surf, ACCENT, panel, 2, border_radius=12)
+    title = title_font.render("Manage Scores", True, WHITE)
+    surf.blit(title, title.get_rect(midtop=(panel.centerx, panel.y + 16)))
+    hint = small_font.render("Reset one game or clear every saved score.", True, GRAY)
+    surf.blit(hint, hint.get_rect(midtop=(panel.centerx, panel.y + 58)))
+    row_y = panel.y + 88
+    row_h = 28
+    for i, g in enumerate(GAMES):
+        if not _game_score_keys(g):
+            continue
+        if row_y > panel.bottom - 70:
+            break
+        name_s = info_font.render(g["name"], True, LIGHT_GRAY)
+        surf.blit(name_s, (panel.x + 20, row_y + 4))
+        sc_s = small_font.render(_score_panel_format(g, scores), True, GOLD)
+        surf.blit(sc_s, (panel.x + 220, row_y + 6))
+        btn = pygame.Rect(panel.right - 100, row_y, 80, row_h)
+        hovered = hover_reset == i
+        pygame.draw.rect(surf, RED if hovered else (120, 50, 50), btn, border_radius=6)
+        btn_lbl = small_font.render("Reset", True, WHITE)
+        surf.blit(btn_lbl, btn_lbl.get_rect(center=btn.center))
+        row_y += row_h + 4
+    for btn, label, key in (
+        (all_btn, "Reset all", -1),
+        (close_btn, "Close", -2),
+    ):
+        pygame.draw.rect(surf, ACCENT if hover_reset == key else (50, 55, 90), btn, border_radius=8)
+        lbl = info_font.render(label, True, WHITE)
+        surf.blit(lbl, lbl.get_rect(center=btn.center))
+    return reset_rects, all_btn, close_btn
 
 
 def main():
@@ -441,8 +561,16 @@ def main():
     score_refresh = time.time()
     hovered_idx     = None
     return_cooldown = 0   # frames to ignore clicks after returning from a game
+    scores_panel    = False
+    panel_hover     = None
+    manage_btn      = pygame.Rect(WIDTH - 340, 28, 155, 32)
     clock           = pygame.time.Clock()
     running         = True
+
+    def refresh_scores():
+        nonlocal scores, score_refresh
+        scores = get_all_scores()
+        score_refresh = time.time()
 
     while running:
         clock.tick(60)
@@ -451,30 +579,45 @@ def main():
         mouse = pygame.mouse.get_pos()
 
         if time.time() - score_refresh > 2:
-            scores = get_all_scores()
-            score_refresh = time.time()
+            refresh_scores()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    running = False
+                    if scores_panel:
+                        scores_panel = False
+                    else:
+                        running = False
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if hovered_idx is not None and return_cooldown == 0:
+                if scores_panel:
+                    if panel_hover == -2:
+                        scores_panel = False
+                    elif panel_hover == -1:
+                        clear_all_scores()
+                        refresh_scores()
+                    elif panel_hover is not None and panel_hover >= 0:
+                        for key in _game_score_keys(GAMES[panel_hover]):
+                            clear_score(key)
+                        refresh_scores()
+                elif manage_btn.collidepoint(mouse):
+                    scores_panel = True
+                elif hovered_idx is not None and return_cooldown == 0:
                     launch_game(hovered_idx)
                     hovered_idx     = None
                     return_cooldown = 20   # ignore clicks for ~0.3s after returning
-                    scores = get_all_scores()
+                    refresh_scores()
 
         hovered_idx = None
-        for i in range(len(GAMES)):
-            row, col = divmod(i, COLS)
-            tx = GRID_X + col * (TILE_W + TILE_PAD)
-            ty = GRID_Y + row * (TILE_H + TILE_PAD)
-            if pygame.Rect(tx, ty, TILE_W, TILE_H).collidepoint(mouse):
-                hovered_idx = i
-                break
+        if not scores_panel:
+            for i in range(len(GAMES)):
+                row, col = divmod(i, COLS)
+                tx = GRID_X + col * (TILE_W + TILE_PAD)
+                ty = GRID_Y + row * (TILE_H + TILE_PAD)
+                if pygame.Rect(tx, ty, TILE_W, TILE_H).collidepoint(mouse):
+                    hovered_idx = i
+                    break
 
         screen.fill(BG_DARK)
         for gx in range(0, WIDTH, 30):
@@ -486,12 +629,29 @@ def main():
         screen.blit(title_s, (30, 22))
         esc_s = small_font.render("ESC to quit", True, GRAY)
         screen.blit(esc_s, (WIDTH - esc_s.get_width() - 20, 38))
+        m_hover = manage_btn.collidepoint(mouse)
+        pygame.draw.rect(screen, ACCENT if m_hover else (50, 55, 90), manage_btn, border_radius=8)
+        m_lbl = small_font.render("Manage scores", True, WHITE)
+        screen.blit(m_lbl, m_lbl.get_rect(center=manage_btn.center))
         for i in range(len(GAMES)):
             row, col = divmod(i, COLS)
             tx = GRID_X + col * (TILE_W + TILE_PAD)
             ty = GRID_Y + row * (TILE_H + TILE_PAD)
             draw_tile(screen, i, tx, ty, hovered_idx == i, scores)
         draw_info_bar(screen, hovered_idx)
+        if scores_panel:
+            panel_hover = None
+            _, reset_rects, all_btn, close_btn = _scores_panel_layout()
+            if all_btn.collidepoint(mouse):
+                panel_hover = -1
+            elif close_btn.collidepoint(mouse):
+                panel_hover = -2
+            else:
+                for idx, rect in reset_rects:
+                    if rect.collidepoint(mouse):
+                        panel_hover = idx
+                        break
+            draw_scores_panel(screen, scores, panel_hover)
         pygame.display.flip()
 
     pygame.quit()
