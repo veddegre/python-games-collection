@@ -10,6 +10,7 @@ import unittest.mock
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from game_runtime import (  # noqa: E402
+    _macos_app_bundle_path,
     _subprocess_launch_cmd,
     game_file_from_argv,
     get_user_data_dir,
@@ -46,6 +47,17 @@ class ResolveGamePathTests(unittest.TestCase):
         with open(os.path.join(self.root, "notes.txt"), "w", encoding="utf-8") as fh:
             fh.write("x")
         self.assertIsNone(resolve_game_path("notes.txt", self.root))
+
+
+class MacOSBundleTests(unittest.TestCase):
+    def test_app_bundle_path_from_macos_executable(self):
+        fake = "/Applications/GamesCollection.app/Contents/MacOS/GamesCollection"
+        with unittest.mock.patch.object(sys, "platform", "darwin"):
+            with unittest.mock.patch.object(sys, "executable", fake):
+                self.assertEqual(
+                    _macos_app_bundle_path(),
+                    "/Applications/GamesCollection.app",
+                )
 
 
 class SubprocessCmdTests(unittest.TestCase):

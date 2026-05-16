@@ -217,6 +217,50 @@ def _subprocess_launch_cmd(game_file: str) -> list[str]:
     return [sys.executable, "-B", menu_py, GAME_ARG, game_file]
 
 
+def _macos_app_bundle_path() -> Optional[str]:
+    """Return the .app bundle path when running inside one (frozen macOS)."""
+    if sys.platform != "darwin":
+        return None
+    exe = os.path.realpath(sys.executable)
+    parts = exe.split(os.sep)
+    try:
+        idx = parts.index("Contents")
+    except ValueError:
+        return None
+    if idx > 0 and parts[idx - 1].endswith(".app"):
+        return os.sep.join(parts[:idx])
+    return None
+
+
+def _launch_game_macos_app_bundle(game_file: str) -> int:
+    """
+    Launch a game in a new .app instance via macOS 'open'.
+    Re-launching sys.executable directly often activates the menu instance and
+    drops --game; open -n -W starts a fresh instance and waits for it to exit.
+    """
+    app = _macos_app_bundle_path()
+    if not app:
+        LOGGER.error("macOS app bundle not found (executable=%s)", sys.executable)
+        return 1
+
+    cmd = ["open", "-W", "-n", "-a", app, "--args", GAME_ARG, game_file]
+    LOGGER.info("Launching game via macOS open: %s", cmd)
+    started = time.monotonic()
+    try:
+        result = subprocess.run(cmd, check=False)
+        elapsed = time.monotonic() - started
+        LOGGER.info(
+            "macOS open finished: %s returncode=%s (%.2fs)",
+            game_file,
+            result.returncode,
+            elapsed,
+        )
+        return result.returncode
+    except Exception:
+        LOGGER.exception("macOS open launch failed for %s", game_file)
+        return 1
+
+
 def _multiprocessing_child_main(game_file: str) -> None:
     """Entry point for spawn-based game processes (PyInstaller-safe)."""
     os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
@@ -250,14 +294,27 @@ def launch_game_subprocess(game_file: str, script_dir: Optional[str] = None) -> 
     if not resolve_game_path(game_file, script_dir):
         return 1
 
-    # Frozen builds: spawn a child Python interpreter instead of re-running the
-    # .app/.exe. On macOS, re-launching the bundle often drops --game args or
-    # activates the existing menu instance without starting the game.
     if getattr(sys, "frozen", False):
+        # macOS: multiprocessing + PyInstaller GUI apps fails silently (menu blink).
+        # Use 'open -n -W' so --game reaches a new app instance.
+        if sys.platform == "darwin":
+            return _launch_game_macos_app_bundle(game_file)
+        # Windows/Linux: subprocess of the frozen executable is reliable.
+        cmd = _subprocess_launch_cmd(game_file)
+        LOGGER.info("Launching frozen subprocess: %s (cwd=%s)", cmd, script_dir)
+        started = time.monotonic()
         try:
-            return _launch_game_multiprocessing(game_file)
+            result = subprocess.run(cmd, cwd=script_dir, check=False)
+            LOGGER.info(
+                "Frozen subprocess finished: %s returncode=%s (%.2fs)",
+                game_file,
+                result.returncode,
+                time.monotonic() - started,
+            )
+            return result.returncode
         except Exception:
-            LOGGER.exception("Spawn launch failed for %s; trying subprocess", game_file)
+            LOGGER.exception("Frozen subprocess failed for %s", game_file)
+            return 1
 
     cmd = _subprocess_launch_cmd(game_file)
     LOGGER.info("Launching subprocess: %s (cwd=%s)", cmd, script_dir)
@@ -290,6 +347,7 @@ def handle_subprocess_game_argv() -> bool:
     if not game_file:
         return False
     setup_logging()
+    LOGGER.info("Game-only process starting (%s)", game_file)
     code = run_game_in_current_process(game_file)
     sys.exit(code)
 

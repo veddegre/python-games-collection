@@ -146,6 +146,7 @@ Perform each test on **both** packaged artifacts (Windows exe, macOS `.app`) unl
 | # | Test | Steps | PASS | FAIL |
 |---|------|-------|------|------|
 | L1 | **Solitaire → close → another game** | Open menu → Solitaire → ESC to menu → launch Snake (or Hangman) within 5 s | Second game opens; menu responsive; no hang | Menu frozen, blank window, or second game never opens |
+| L1b | **macOS packaged: game window appears** | Click any game from `.app` | **Separate game window** opens and is playable (not just a dock blink) | Screen blinks with no game window |
 | L2 | **Solitaire × 5** | Play Solitaire → ESC → repeat 5 times | Menu works after every return | Any hang, crash, or unresponsive menu |
 | L3 | **ESC close** | Launch Solitaire → press ESC once | Returns to menu within ~3 s | Stuck in game or black screen |
 | L4 | **Window X close** | Launch Solitaire → close window with X (macOS) or close game window (Windows) | Returns to menu; menu clickable | App exits entirely (unless user closed main menu) or menu frozen |
