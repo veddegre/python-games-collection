@@ -217,104 +217,27 @@ def _subprocess_launch_cmd(game_file: str) -> list[str]:
     return [sys.executable, "-B", menu_py, GAME_ARG, game_file]
 
 
-def _macos_app_bundle_path() -> Optional[str]:
-    """Return the .app bundle path when running inside one (frozen macOS)."""
-    if sys.platform != "darwin":
-        return None
-    exe = os.path.realpath(sys.executable)
-    parts = exe.split(os.sep)
-    try:
-        idx = parts.index("Contents")
-    except ValueError:
-        return None
-    if idx > 0 and parts[idx - 1].endswith(".app"):
-        return os.sep.join(parts[:idx])
-    return None
-
-
-def _launch_game_macos_app_bundle(game_file: str) -> int:
+def launch_game_frozen_inprocess(game_file: str, script_dir: Optional[str] = None) -> int:
     """
-    Launch a game in a new .app instance via macOS 'open'.
-    Re-launching sys.executable directly often activates the menu instance and
-    drops --game; open -n -W starts a fresh instance and waits for it to exit.
+    Run a game inside the current process (PyInstaller / packaged builds).
+
+    This matches the original shipped behavior: the game uses the same window,
+    then the menu reinitializes pygame afterward. Subprocess/multiprocessing
+    launchers do not work reliably inside macOS .app bundles.
     """
-    app = _macos_app_bundle_path()
-    if not app:
-        LOGGER.error("macOS app bundle not found (executable=%s)", sys.executable)
-        return 1
-
-    cmd = ["open", "-W", "-n", "-a", app, "--args", GAME_ARG, game_file]
-    LOGGER.info("Launching game via macOS open: %s", cmd)
-    started = time.monotonic()
-    try:
-        result = subprocess.run(cmd, check=False)
-        elapsed = time.monotonic() - started
-        LOGGER.info(
-            "macOS open finished: %s returncode=%s (%.2fs)",
-            game_file,
-            result.returncode,
-            elapsed,
-        )
-        return result.returncode
-    except Exception:
-        LOGGER.exception("macOS open launch failed for %s", game_file)
-        return 1
-
-
-def _multiprocessing_child_main(game_file: str) -> None:
-    """Entry point for spawn-based game processes (PyInstaller-safe)."""
-    os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
-    setup_logging()
-    code = run_game_in_current_process(game_file)
-    sys.exit(code)
-
-
-def _launch_game_multiprocessing(game_file: str) -> int:
-    import multiprocessing
-
-    ctx = multiprocessing.get_context("spawn")
-    proc = ctx.Process(
-        target=_multiprocessing_child_main,
-        args=(game_file,),
-        name=f"game-{game_file}",
-    )
-    LOGGER.info("Launching game process (spawn): %s", game_file)
-    started = time.monotonic()
-    proc.start()
-    proc.join()
-    elapsed = time.monotonic() - started
-    code = proc.exitcode if proc.exitcode is not None else 1
-    LOGGER.info("Game process finished: %s exitcode=%s (%.2fs)", game_file, code, elapsed)
-    return code
+    LOGGER.info("Launching game in-process (frozen): %s", game_file)
+    return run_game_in_current_process(game_file, script_dir)
 
 
 def launch_game_subprocess(game_file: str, script_dir: Optional[str] = None) -> int:
-    """Launch a game in a child process (works for source and PyInstaller builds)."""
+    """Launch a game in a child process (source / development mode only)."""
     script_dir = script_dir or get_script_dir()
     if not resolve_game_path(game_file, script_dir):
         return 1
 
     if getattr(sys, "frozen", False):
-        # macOS: multiprocessing + PyInstaller GUI apps fails silently (menu blink).
-        # Use 'open -n -W' so --game reaches a new app instance.
-        if sys.platform == "darwin":
-            return _launch_game_macos_app_bundle(game_file)
-        # Windows/Linux: subprocess of the frozen executable is reliable.
-        cmd = _subprocess_launch_cmd(game_file)
-        LOGGER.info("Launching frozen subprocess: %s (cwd=%s)", cmd, script_dir)
-        started = time.monotonic()
-        try:
-            result = subprocess.run(cmd, cwd=script_dir, check=False)
-            LOGGER.info(
-                "Frozen subprocess finished: %s returncode=%s (%.2fs)",
-                game_file,
-                result.returncode,
-                time.monotonic() - started,
-            )
-            return result.returncode
-        except Exception:
-            LOGGER.exception("Frozen subprocess failed for %s", game_file)
-            return 1
+        LOGGER.error("launch_game_subprocess called in frozen build; use launch_game_frozen_inprocess")
+        return 1
 
     cmd = _subprocess_launch_cmd(game_file)
     LOGGER.info("Launching subprocess: %s (cwd=%s)", cmd, script_dir)

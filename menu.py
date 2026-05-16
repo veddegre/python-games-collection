@@ -13,6 +13,7 @@ if sys.platform == "win32":
 from game_runtime import (
     get_script_dir,
     handle_subprocess_game_argv,
+    launch_game_frozen_inprocess,
     launch_game_subprocess,
     set_window_icon,
     setup_logging,
@@ -130,12 +131,20 @@ INFO_H         = 110
 INFO_Y         = HEIGHT - INFO_H
 
 def _restore_menu_after_game():
-    """Bring the menu display back after a child game process exits."""
+    """Bring the menu display back after a game exits."""
     global screen
-    LOGGER.info("Restoring menu (pygame initialized=%s)", pygame.get_init())
+    frozen = getattr(sys, "frozen", False)
+    LOGGER.info(
+        "Restoring menu (frozen=%s, pygame initialized=%s)", frozen, pygame.get_init()
+    )
     try:
-        if not pygame.get_init():
-            LOGGER.warning("pygame was not initialized; reinitializing")
+        # Packaged builds run games in-process; each game calls pygame.quit().
+        # Source builds use a subprocess and usually leave pygame initialized here.
+        if frozen or not pygame.get_init():
+            try:
+                pygame.quit()
+            except Exception:
+                pass
             pygame.init()
             pygame.font.init()
 
@@ -165,22 +174,28 @@ def _restore_menu_after_game():
 
 
 def launch_game(game_idx):
-    """Launch a game in an isolated subprocess so pygame.quit() cannot break the menu."""
+    """Launch a game. Packaged builds: in-process exec (original). Source: subprocess."""
     g = GAMES[game_idx]
     full_path = os.path.join(get_script_dir(), g["file"])
     if not os.path.exists(full_path):
         LOGGER.error("File not found: %s", full_path)
         return
 
-    LOGGER.info("Launching game: %s (%s)", g["name"], g["file"])
-    if not getattr(sys, "frozen", False):
+    frozen = getattr(sys, "frozen", False)
+    LOGGER.info("Launching game: %s (%s, frozen=%s)", g["name"], g["file"], frozen)
+
+    # In frozen mode the game shares this window — do not iconify the only window.
+    if not frozen:
         try:
             pygame.display.iconify()
         except pygame.error as exc:
             LOGGER.warning("Could not iconify menu window: %s", exc)
 
     try:
-        launch_game_subprocess(g["file"])
+        if frozen:
+            launch_game_frozen_inprocess(g["file"])
+        else:
+            launch_game_subprocess(g["file"])
     except Exception:
         LOGGER.exception("Error launching %s", g["file"])
     finally:
@@ -429,6 +444,4 @@ def main():
 
 
 if __name__ == "__main__":
-    import multiprocessing
-    multiprocessing.freeze_support()
     main()
