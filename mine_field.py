@@ -4,9 +4,9 @@ import pygame
 import random
 import sys
 import time
-from highscores import get_high_score, save_high_score
+from highscores import get_best_time, save_best_time
 
-GAME_NAME = "minesweeper"
+SCORE_KEY = "minesweeper_time"
 pygame.init()
 
 CELL  = 36
@@ -155,7 +155,13 @@ def draw_hud(flags_left, elapsed, high_score, game_over, won):
 
 def reset():
     return (make_grid(), False, False, False, None, None,
-            None, get_high_score(GAME_NAME), False)
+            None, get_best_time(SCORE_KEY), False)
+
+
+def _on_win(elapsed, high_score):
+    """Record a winning time and return (high_score, new_high)."""
+    new_high = save_best_time(SCORE_KEY, elapsed)
+    return get_best_time(SCORE_KEY), new_high
 
 grid, game_over, won, mines_placed, hit_r, hit_c, start_time, high_score, new_high = reset()
 running = True
@@ -212,16 +218,7 @@ while running:
                     if not game_over and check_win(grid):
                         won = True
                         elapsed = time.time() - start_time
-                        if not high_score or elapsed < high_score:
-                            from highscores import load_scores
-                            import json, os
-                            scores = load_scores()
-                            if "minesweeper_time" not in scores or elapsed < scores["minesweeper_time"]:
-                                scores["minesweeper_time"] = elapsed
-                                with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "scores.json"), "w") as f:
-                                    json.dump(scores, f, indent=2)
-                                new_high = True
-                            high_score = scores.get("minesweeper_time", None)
+                        high_score, new_high = _on_win(elapsed, high_score)
                     continue
                 if cell["revealed"]:
                     continue
@@ -236,18 +233,9 @@ while running:
                 else:
                     reveal(grid, r, c)
                 if not game_over and check_win(grid):
-                        won = True
-                        elapsed = time.time() - start_time
-                        if not high_score or elapsed < high_score:
-                            from highscores import save_high_score as shs, load_scores
-                            import json, os
-                            scores = load_scores()
-                            if "minesweeper_time" not in scores or elapsed < scores["minesweeper_time"]:
-                                scores["minesweeper_time"] = elapsed
-                                with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "scores.json"), "w") as f:
-                                    json.dump(scores, f, indent=2)
-                                new_high = True
-                            high_score = scores.get("minesweeper_time", None)
+                    won = True
+                    elapsed = time.time() - start_time
+                    high_score, new_high = _on_win(elapsed, high_score)
 
             elif event.button == 3 and not game_over and not won:  # Right click - flag
                 if not cell["revealed"]:

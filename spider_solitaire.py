@@ -107,9 +107,9 @@ SLOT_COLOR = (0, 70, 0)
 SLOT_BDR   = (0, 110, 0)
 HIGHLIGHT  = (255, 255, 80)
 
-font       = _make_font(18, bold=True)
-small_font = _make_font(13, bold=True)
-big_font   = _make_font(34, bold=True)
+font       = _make_font(22, bold=True)
+small_font = _make_font(17, bold=True)
+big_font   = _make_font(38, bold=True)
 clock      = pygame.time.Clock()
 
 CARD_W, CARD_H = 85, 115
@@ -153,11 +153,13 @@ def draw_card(surf, card, x, y, selected=False):
     pygame.draw.rect(surf, CARD_BG, r, border_radius=6)
     pygame.draw.rect(surf, DARK_GRAY, r, 1, border_radius=6)
     color = card_color(card)
-    surf.blit(font.render(card["rank"], True, color), (x+3, y+2))
-    surf.blit(_render_suit(small_font, card["suit"], color), (x+3, y+20))
+    rank_tl = font.render(card["rank"], True, color)
+    surf.blit(rank_tl, (x + 4, y + 3))
+    surf.blit(_render_suit(small_font, card["suit"], color), (x + 4, y + 24))
     cs = _render_suit(big_font, card["suit"], color)
-    surf.blit(cs, (x+CARD_W//2-cs.get_width()//2, y+CARD_H//2-cs.get_height()//2))
-    surf.blit(font.render(card["rank"], True, color), (x+CARD_W-20, y+CARD_H-36))
+    surf.blit(cs, (x + CARD_W // 2 - cs.get_width() // 2, y + CARD_H // 2 - cs.get_height() // 2))
+    rank_br = font.render(card["rank"], True, color)
+    surf.blit(rank_br, rank_br.get_rect(bottomright=(x + CARD_W - 4, y + CARD_H - 4)))
 
 def draw_slot(surf, x, y):
     r = pygame.Rect(x, y, CARD_W, CARD_H)
