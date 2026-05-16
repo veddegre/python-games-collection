@@ -290,9 +290,20 @@ def run(screen=None):
     GX = BORDER; GY = BORDER
     screen = pygame.display.set_mode((SW, SH))
     pygame.display.set_caption("Stack Attack")
-    from game_runtime import set_window_icon
-    set_window_icon()
-    num_font  = pygame.font.SysFont("Arial", 22, bold=True)
+    def _set_window_icon():
+        base = os.path.dirname(os.path.abspath(__file__))
+        for _icon_name in ("icon.bmp", "icon.png"):
+            _icon_path = os.path.join(base, _icon_name)
+            if os.path.isfile(_icon_path):
+                try:
+                    pygame.display.set_icon(pygame.image.load(_icon_path))
+                    break
+                except pygame.error:
+                    pass
+    
+    _set_window_icon()
+    
+        num_font  = pygame.font.SysFont("Arial", 22, bold=True)
     lbl_font  = pygame.font.SysFont("Arial", 13, bold=True)
     tiny_font = pygame.font.SysFont("Arial", 11)
     big_font  = pygame.font.SysFont("Arial", 26, bold=True)

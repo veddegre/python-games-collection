@@ -13,13 +13,14 @@ if sys.platform == "win32":
 from game_runtime import (
     get_script_dir,
     handle_subprocess_game_argv,
-    launch_game_frozen_inprocess,
     launch_game_subprocess,
     set_window_icon,
     setup_logging,
 )
 
-handle_subprocess_game_argv()
+# Child-process --game mode is for source installs only; packaged apps use in-process exec.
+if not getattr(sys, "frozen", False):
+    handle_subprocess_game_argv()
 
 LOGGER = setup_logging()
 
@@ -131,60 +132,102 @@ INFO_H         = 110
 INFO_Y         = HEIGHT - INFO_H
 
 def _restore_menu_after_game():
-    """Bring the menu display back after a game exits."""
+    """Bring the menu back after a game exits (matches original packaged behavior)."""
     global screen
-    frozen = getattr(sys, "frozen", False)
-    LOGGER.info(
-        "Restoring menu (frozen=%s, pygame initialized=%s)", frozen, pygame.get_init()
-    )
+    LOGGER.info("Restoring menu (frozen=%s)", getattr(sys, "frozen", False))
+    pygame.init()
+    pygame.font.init()
+    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    screen.fill((8, 10, 28))
+
+    import math as _math
+    _loading_font = pygame.font.SysFont("Arial", 28, bold=True)
+    _small_font = pygame.font.SysFont("Arial", 18)
+    msg = _loading_font.render("Returning to menu...", True, (230, 232, 255))
+    hint = _small_font.render("Loading", True, (110, 114, 150))
+    cx, cy = WIDTH // 2, HEIGHT // 2
+    screen.blit(msg, msg.get_rect(centerx=cx, centery=cy - 30))
+    screen.blit(hint, hint.get_rect(centerx=cx, centery=cy + 20))
+    for radius, color, width in [(38, (0, 80, 120), 6), (38, (0, 200, 255), 3)]:
+        pygame.draw.arc(
+            screen, color,
+            (cx - radius, cy + 50, radius * 2, radius * 2),
+            _math.pi * 0.2, _math.pi * 1.8, width,
+        )
+    pygame.display.flip()
+    _init_fonts()
+    pygame.display.set_caption("Games Collection")
+    set_window_icon()
+    _angle = 0.0
+    _clock = pygame.time.Clock()
+    for _ in range(30):
+        _clock.tick(60)
+        _angle += 0.25
+        screen.fill((8, 10, 28))
+        screen.blit(msg, msg.get_rect(centerx=cx, centery=cy - 30))
+        screen.blit(hint, hint.get_rect(centerx=cx, centery=cy + 20))
+        for radius, color, width in [(38, (0, 80, 120), 6), (38, (0, 200, 255), 3)]:
+            pygame.draw.arc(
+                screen, color,
+                (cx - radius, cy + 50, radius * 2, radius * 2),
+                _angle, _angle + _math.pi * 1.6, width,
+            )
+        pygame.display.flip()
+        pygame.event.pump()
+    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    pygame.event.clear()
+    LOGGER.info("Menu restored successfully")
+
+
+def _exec_frozen_game(full_path: str, game_file: str) -> None:
+    """Run a game script in-process exactly like the original shipped launcher."""
+    with open(full_path, encoding="utf-8") as fh:
+        source = fh.read()
+    real_exit = sys.exit
+    sys.exit = lambda *a: None
     try:
-        # Packaged builds run games in-process; each game calls pygame.quit().
-        # Source builds use a subprocess and usually leave pygame initialized here.
-        if frozen or not pygame.get_init():
+        exec(
+            compile(source, full_path, "exec"),
+            {
+                "__file__": full_path,
+                "__name__": "__main__",
+                "__builtins__": __builtins__,
+            },
+        )
+    except SystemExit:
+        pass
+    except Exception:
+        LOGGER.exception("Error in game %s", game_file)
+        if sys.platform == "darwin":
             try:
-                pygame.quit()
+                import subprocess
+                subprocess.run(
+                    [
+                        "osascript", "-e",
+                        f'display alert "Could not start {game_file}" message '
+                        f'"See games_collection.log in Application Support."',
+                    ],
+                    check=False,
+                )
             except Exception:
                 pass
-            pygame.init()
-            pygame.font.init()
-
-        screen = pygame.display.set_mode((WIDTH, HEIGHT))
-        screen.fill((8, 10, 28))
-        pygame.display.set_caption("Games Collection")
-        set_window_icon()
-        _init_fonts()
-        pygame.event.clear()
-        pygame.event.pump()
-        pygame.display.flip()
-        LOGGER.info("Menu restored successfully")
-    except Exception:
-        LOGGER.exception("Menu restore failed; attempting full pygame reinit")
-        try:
-            if pygame.get_init():
-                pygame.quit()
-        except Exception:
-            pass
-        pygame.init()
-        pygame.font.init()
-        screen = pygame.display.set_mode((WIDTH, HEIGHT))
-        _init_fonts()
-        pygame.display.set_caption("Games Collection")
-        set_window_icon()
-        pygame.event.clear()
+        raise
+    finally:
+        sys.exit = real_exit
 
 
 def launch_game(game_idx):
-    """Launch a game. Packaged builds: in-process exec (original). Source: subprocess."""
+    """Launch a game. Packaged: in-process exec (original). Source: subprocess."""
     g = GAMES[game_idx]
-    full_path = os.path.join(get_script_dir(), g["file"])
+    script_dir = get_script_dir()
+    full_path = os.path.join(script_dir, g["file"])
     if not os.path.exists(full_path):
-        LOGGER.error("File not found: %s", full_path)
+        LOGGER.error("File not found: %s (script_dir=%s)", full_path, script_dir)
         return
 
     frozen = getattr(sys, "frozen", False)
     LOGGER.info("Launching game: %s (%s, frozen=%s)", g["name"], g["file"], frozen)
 
-    # In frozen mode the game shares this window — do not iconify the only window.
     if not frozen:
         try:
             pygame.display.iconify()
@@ -193,7 +236,7 @@ def launch_game(game_idx):
 
     try:
         if frozen:
-            launch_game_frozen_inprocess(g["file"])
+            _exec_frozen_game(full_path, g["file"])
         else:
             launch_game_subprocess(g["file"])
     except Exception:

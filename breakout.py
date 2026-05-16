@@ -12,8 +12,19 @@ pygame.init()
 WIDTH, HEIGHT = 800, 600
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Breakout")
-from game_runtime import set_window_icon
-set_window_icon()
+def _set_window_icon():
+    base = os.path.dirname(os.path.abspath(__file__))
+    for _icon_name in ("icon.bmp", "icon.png"):
+        _icon_path = os.path.join(base, _icon_name)
+        if os.path.isfile(_icon_path):
+            try:
+                pygame.display.set_icon(pygame.image.load(_icon_path))
+                break
+            except pygame.error:
+                pass
+
+_set_window_icon()
+
 
 BLACK  = (0, 0, 0)
 WHITE  = (255, 255, 255)
