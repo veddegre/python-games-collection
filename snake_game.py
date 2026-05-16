@@ -16,9 +16,8 @@ GRID_WIDTH, GRID_HEIGHT = 20, 15
 WIDTH, HEIGHT = CELL_SIZE * GRID_WIDTH, CELL_SIZE * GRID_HEIGHT
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Snake Game")
-_icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icon.png")
-if os.path.exists(_icon_path):
-    pygame.display.set_icon(pygame.image.load(_icon_path))
+from game_runtime import set_window_icon
+set_window_icon()
 
 # Colors
 BLACK = (0, 0, 0)

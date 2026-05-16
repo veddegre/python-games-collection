@@ -46,9 +46,10 @@ jobs:
           datas = [(f, '.') for f in glob.glob('*.py')]
           datas += [(f, '.') for f in glob.glob('*.txt')]
           datas.append(('icon.png', '.'))
+          datas.append(('icon.bmp', '.'))
           datas.append(('app.manifest', '.'))
           a = Analysis(['menu.py'], pathex=[], binaries=[],
-              datas=datas, hiddenimports=['pygame'],
+              datas=datas, hiddenimports=['pygame', 'multiprocessing'],
               hookspath=[], runtime_hooks=[], excludes=[])
           pyz = PYZ(a.pure)
           exe = EXE(pyz, a.scripts, [], exclude_binaries=True,
@@ -60,6 +61,9 @@ jobs:
               icon='icon.icns',
               bundle_identifier='com.scottvedder.gamescollection')
           SPEC
+
+      - name: Create icon.bmp for pygame window icon
+        run: sips -s format bmp icon.png --out icon.bmp
 
       - name: Build Mac app
         run: pyinstaller GamesCollection.spec
@@ -119,11 +123,12 @@ jobs:
           datas = [(f, '.') for f in glob.glob('*.py')]
           datas += [(f, '.') for f in glob.glob('*.txt')]
           datas.append(('icon.png', '.'))
+          datas.append(('icon.bmp', '.'))
           datas.append(('app.manifest', '.'))
           datas_str = repr(datas)
           spec = f"""# -*- mode: python ; coding: utf-8 -*-
           a = Analysis(['menu.py'], pathex=[], binaries=[],
-              datas={datas_str}, hiddenimports=['pygame'],
+              datas={datas_str}, hiddenimports=['pygame', 'multiprocessing'],
               hookspath=[], runtime_hooks=[], excludes=[])
           pyz = PYZ(a.pure)
           exe = EXE(pyz, a.scripts, [], exclude_binaries=True,
@@ -134,6 +139,12 @@ jobs:
               name='GamesCollection')
           """
           open('GamesCollection.spec', 'w').write(spec)
+
+      - name: Create icon.bmp for pygame window icon
+        shell: python
+        run: |
+          from PIL import Image
+          Image.open("icon.png").convert("RGB").save("icon.bmp")
 
       - name: Build Windows app
         run: pyinstaller GamesCollection.spec

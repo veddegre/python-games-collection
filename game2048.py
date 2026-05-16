@@ -11,9 +11,8 @@ pygame.init()
 WIDTH, HEIGHT = 520, 660
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("2048")
-_icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icon.png")
-if os.path.exists(_icon_path):
-    pygame.display.set_icon(pygame.image.load(_icon_path))
+from game_runtime import set_window_icon
+set_window_icon()
 
 # Tile colors
 TILE_COLORS = {

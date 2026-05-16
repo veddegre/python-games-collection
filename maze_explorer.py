@@ -18,9 +18,8 @@ WIDTH, HEIGHT = CELL_SIZE * MAZE_WIDTH, CELL_SIZE * MAZE_HEIGHT + 50  # Extra ba
 MAZE_OFFSET_Y = 50  # Maze drawn below HUD
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Maze Explorer")
-_icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icon.png")
-if os.path.exists(_icon_path):
-    pygame.display.set_icon(pygame.image.load(_icon_path))
+from game_runtime import set_window_icon
+set_window_icon()
 
 # Colors
 BLACK = (0, 0, 0)

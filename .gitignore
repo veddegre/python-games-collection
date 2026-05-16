@@ -1,4 +1,6 @@
 scores.json
+.venv/
+user_data/
 __pycache__/
 *.pyc
 *.pyo

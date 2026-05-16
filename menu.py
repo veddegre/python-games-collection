@@ -14,6 +14,7 @@ from game_runtime import (
     get_script_dir,
     handle_subprocess_game_argv,
     launch_game_subprocess,
+    set_window_icon,
     setup_logging,
 )
 
@@ -31,10 +32,7 @@ WIDTH, HEIGHT = 980, 720
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Games Collection")
 
-# Set window icon
-_icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icon.png")
-if os.path.exists(_icon_path):
-    pygame.display.set_icon(pygame.image.load(_icon_path))
+set_window_icon()
 
 # Colors
 BG_DARK    = (15, 15, 30)
@@ -144,8 +142,7 @@ def _restore_menu_after_game():
         screen = pygame.display.set_mode((WIDTH, HEIGHT))
         screen.fill((8, 10, 28))
         pygame.display.set_caption("Games Collection")
-        if os.path.exists(_icon_path):
-            pygame.display.set_icon(pygame.image.load(_icon_path))
+        set_window_icon()
         _init_fonts()
         pygame.event.clear()
         pygame.event.pump()
@@ -163,8 +160,7 @@ def _restore_menu_after_game():
         screen = pygame.display.set_mode((WIDTH, HEIGHT))
         _init_fonts()
         pygame.display.set_caption("Games Collection")
-        if os.path.exists(_icon_path):
-            pygame.display.set_icon(pygame.image.load(_icon_path))
+        set_window_icon()
         pygame.event.clear()
 
 
@@ -433,4 +429,6 @@ def main():
 
 
 if __name__ == "__main__":
+    import multiprocessing
+    multiprocessing.freeze_support()
     main()

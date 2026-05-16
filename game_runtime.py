@@ -22,41 +22,115 @@ def get_script_dir() -> str:
     return os.path.dirname(os.path.abspath(__file__))
 
 
+_icon_surface = None
+
+
+def set_window_icon() -> None:
+    """
+    Set the pygame window icon from icon.bmp or icon.png in the app directory.
+    On some macOS/pygame builds PNG cannot be loaded ('not a Windows BMP file');
+    icon.bmp is preferred when present.
+    """
+    global _icon_surface
+    import pygame
+
+    if _icon_surface is not None:
+        try:
+            pygame.display.set_icon(_icon_surface)
+        except pygame.error:
+            pass
+        return
+
+    base = get_script_dir()
+    for name in ("icon.bmp", "icon.png"):
+        path = os.path.join(base, name)
+        if not os.path.isfile(path):
+            continue
+        try:
+            _icon_surface = pygame.image.load(path)
+            pygame.display.set_icon(_icon_surface)
+            return
+        except pygame.error as exc:
+            LOGGER.debug("Window icon not loaded from %s: %s", path, exc)
+
+
+_user_data_dir: Optional[str] = None
+
+
 def get_user_data_dir() -> str:
+    """Return a writable user data directory, with safe fallbacks."""
+    global _user_data_dir
+    if _user_data_dir is not None:
+        return _user_data_dir
+
+    candidates = []
     name = "GamesCollection"
     if sys.platform == "darwin":
-        base = os.path.join(
-            os.path.expanduser("~"), "Library", "Application Support", name
+        candidates.append(
+            os.path.join(os.path.expanduser("~"), "Library", "Application Support", name)
         )
     elif sys.platform == "win32":
-        base = os.path.join(
-            os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), name
-        )
+        local = os.environ.get("LOCALAPPDATA")
+        if local:
+            candidates.append(os.path.join(local, name))
+        candidates.append(os.path.join(os.path.expanduser("~"), name))
     else:
-        base = os.path.join(os.path.expanduser("~"), ".config", name)
+        candidates.append(os.path.join(os.path.expanduser("~"), ".config", name))
+
+    # Last resort: next to the app / repo (always try this for dev and permissions issues)
+    candidates.append(os.path.join(get_script_dir(), "user_data"))
+
+    for base in candidates:
+        try:
+            os.makedirs(base, exist_ok=True)
+            test_file = os.path.join(base, ".write_test")
+            with open(test_file, "w", encoding="utf-8") as fh:
+                fh.write("ok")
+            os.remove(test_file)
+            _user_data_dir = base
+            return base
+        except OSError:
+            continue
+
+    # Should be unreachable; use temp as absolute fallback
+    import tempfile
+
+    base = os.path.join(tempfile.gettempdir(), name)
     os.makedirs(base, exist_ok=True)
+    _user_data_dir = base
     return base
 
 
 def setup_logging() -> logging.Logger:
-    log_path = os.path.join(get_user_data_dir(), "games_collection.log")
     root = logging.getLogger("games_collection")
     if root.handlers:
         return root
     root.setLevel(logging.INFO)
     fmt = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
-    fh = logging.FileHandler(log_path, encoding="utf-8")
-    fh.setFormatter(fmt)
-    root.addHandler(fh)
+
+    try:
+        log_path = os.path.join(get_user_data_dir(), "games_collection.log")
+        fh = logging.FileHandler(log_path, encoding="utf-8")
+        fh.setFormatter(fmt)
+        root.addHandler(fh)
+    except OSError as exc:
+        # Never block app startup if the log file cannot be created
+        err = logging.StreamHandler()
+        err.setFormatter(fmt)
+        root.addHandler(err)
+        root.warning("File logging disabled (%s); using stderr only", exc)
+
     if not getattr(sys, "frozen", False):
         sh = logging.StreamHandler()
         sh.setFormatter(fmt)
         root.addHandler(sh)
+
     root.info(
-        "Logging started (frozen=%s, platform=%s, executable=%s)",
+        "Logging started (frozen=%s, platform=%s, executable=%s, data_dir=%s)",
         getattr(sys, "frozen", False),
         sys.platform,
         sys.executable,
+        get_user_data_dir(),
     )
     return root
 
@@ -143,11 +217,47 @@ def _subprocess_launch_cmd(game_file: str) -> list[str]:
     return [sys.executable, "-B", menu_py, GAME_ARG, game_file]
 
 
+def _multiprocessing_child_main(game_file: str) -> None:
+    """Entry point for spawn-based game processes (PyInstaller-safe)."""
+    os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
+    setup_logging()
+    code = run_game_in_current_process(game_file)
+    sys.exit(code)
+
+
+def _launch_game_multiprocessing(game_file: str) -> int:
+    import multiprocessing
+
+    ctx = multiprocessing.get_context("spawn")
+    proc = ctx.Process(
+        target=_multiprocessing_child_main,
+        args=(game_file,),
+        name=f"game-{game_file}",
+    )
+    LOGGER.info("Launching game process (spawn): %s", game_file)
+    started = time.monotonic()
+    proc.start()
+    proc.join()
+    elapsed = time.monotonic() - started
+    code = proc.exitcode if proc.exitcode is not None else 1
+    LOGGER.info("Game process finished: %s exitcode=%s (%.2fs)", game_file, code, elapsed)
+    return code
+
+
 def launch_game_subprocess(game_file: str, script_dir: Optional[str] = None) -> int:
     """Launch a game in a child process (works for source and PyInstaller builds)."""
     script_dir = script_dir or get_script_dir()
     if not resolve_game_path(game_file, script_dir):
         return 1
+
+    # Frozen builds: spawn a child Python interpreter instead of re-running the
+    # .app/.exe. On macOS, re-launching the bundle often drops --game args or
+    # activates the existing menu instance without starting the game.
+    if getattr(sys, "frozen", False):
+        try:
+            return _launch_game_multiprocessing(game_file)
+        except Exception:
+            LOGGER.exception("Spawn launch failed for %s; trying subprocess", game_file)
 
     cmd = _subprocess_launch_cmd(game_file)
     LOGGER.info("Launching subprocess: %s (cwd=%s)", cmd, script_dir)
@@ -174,12 +284,12 @@ def launch_game_subprocess(game_file: str, script_dir: Optional[str] = None) -> 
 def handle_subprocess_game_argv() -> bool:
     """
     If this process was started as a game child (--game <file>), run that game and
-  return True so the caller can exit without starting the menu.
+    exit. Otherwise return False so the menu can start.
     """
-    setup_logging()
     game_file = game_file_from_argv()
     if not game_file:
         return False
+    setup_logging()
     code = run_game_in_current_process(game_file)
     sys.exit(code)
 

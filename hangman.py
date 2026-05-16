@@ -11,9 +11,8 @@ pygame.init()
 WIDTH, HEIGHT = 800, 620
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Hangman")
-_icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icon.png")
-if os.path.exists(_icon_path):
-    pygame.display.set_icon(pygame.image.load(_icon_path))
+from game_runtime import set_window_icon
+set_window_icon()
 
 BG         = (18, 20, 38)
 WHITE      = (255, 255, 255)

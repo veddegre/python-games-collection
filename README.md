@@ -70,17 +70,35 @@ All games save high scores locally and support **ESC to return to the menu**. Pa
 
 ## Installation
 
+macOS (Homebrew Python) and many Linux distros **block** `pip install` into the system Python ([PEP 668](https://peps.python.org/pep-0668/)). Use the project virtual environment instead.
+
+**Python version:** Use **3.8 through 3.13**. **Python 3.14 is not supported** — pygame installs but `pygame.font` is missing. On Mac with Homebrew: `brew install python@3.11` then `./setup.sh`.
+
 ```bash
 # 1. Clone the repo
 git clone https://github.com/veddegre/python-games-collection.git
 cd python-games-collection
 
-# 2. Install pygame
-pip install pygame
+# 2. One-time setup (creates .venv/ and installs pygame)
+chmod +x setup.sh GameCollection.command
+./setup.sh
 
 # 3. Run
-python run.py
+./GameCollection.command
 ```
+
+**Windows:** run `setup.bat` once, then `GameCollection.bat`.
+
+**Manual venv (optional):**
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+python -m pip install -r requirements.txt
+python -B run.py
+```
+
+Do **not** use `brew install pygame` — there is no Homebrew formula for pygame.
 
 ---
 

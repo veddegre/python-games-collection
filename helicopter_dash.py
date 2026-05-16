@@ -71,9 +71,8 @@ if __name__ == '__main__':
     WIDTH, HEIGHT = 600, 480
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption("Helicopter Dash")
-    _icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icon.png")
-    if os.path.exists(_icon_path):
-        pygame.display.set_icon(pygame.image.load(_icon_path))
+    from game_runtime import set_window_icon
+    set_window_icon()
 
     font       = pygame.font.SysFont("Arial", 36, bold=True)
     small_font = pygame.font.SysFont("Arial", 20)

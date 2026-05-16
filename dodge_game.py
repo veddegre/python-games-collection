@@ -23,9 +23,8 @@ LIGHT_RED = (255, 50, 50)
 # Create the screen
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Catch the Falling Objects")
-_icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icon.png")
-if os.path.exists(_icon_path):
-    pygame.display.set_icon(pygame.image.load(_icon_path))
+from game_runtime import set_window_icon
+set_window_icon()
 
 # Fonts
 myFont = pygame.font.SysFont("monospace", 35)
