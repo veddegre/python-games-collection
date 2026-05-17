@@ -116,38 +116,57 @@ class StackAttack:
         self.hold_locked = True
 
     def _lock(self):
-        for r,c in self.cur.cells():
-            if 0 <= r < GRID_H: self.grid[r][c] = self.cur.color
+        for r, c in self.cur.cells():
+            if 0 <= r < GRID_H:
+                self.grid[r][c] = self.cur.color
         self._clear()
-        self.cur=self.nxt; self.nxt=Piece(); self.hold_locked=False
+        self.cur = self.nxt
+        self.nxt = Piece()
+        self.hold_locked = False
         if not self._valid(self.cur.row, self.cur.col, self.cur.rot):
-            self.game_over=True
-            if save_high_score(GAME_NAME,self.score): self.new_high=True
-            self.high_score=get_high_score(GAME_NAME)
+            self.game_over = True
+            if save_high_score(GAME_NAME, self.score):
+                self.new_high = True
+            self.high_score = get_high_score(GAME_NAME)
+
+    def _full_rows(self):
+        return [r for r in range(GRID_H) if all(c is not None for c in self.grid[r])]
 
     def _clear(self):
-        full=[r for r in range(GRID_H) if all(c is not None for c in self.grid[r])]
-        if not full: self.combo=0; return
-        n=len(full); self.combo+=1
+        full = self._full_rows()
+        if not full:
+            self.combo = 0
+            return
+        n = len(full)
+        self.combo += 1
         for r in full:
             for c in range(GRID_W):
-                col=self.grid[r][c]
+                col = self.grid[r][c]
                 if col:
                     for _ in range(3):
                         self.particles.append({
-                            "x":float(BORDER+c*CELL+CELL//2),
-                            "y":float(BORDER+(r-HIDDEN)*CELL+CELL//2),
-                            "vx":random.uniform(-4,4),"vy":random.uniform(-6,-0.5),
-                            "life":32,"color":col})
-        base=[0,100,300,600,1200][min(n,4)]
-        bonus=(self.combo-1)*80
-        total=(base+bonus)*self.level
-        self.score+=total; self.lines+=n
-        self.level=min(15,1+self.lines//10)
-        self.drop_spd=max(4,32-(self.level-1)*2)
-        if self.combo>1: self.msg=f"COMBO x{self.combo}!  +{total}"; self.msg_t=90
-        for r in sorted(full,reverse=True):
-            del self.grid[r]; self.grid.insert(0,[None]*GRID_W)
+                            "x": float(BORDER + c * CELL + CELL // 2),
+                            "y": float(BORDER + (r - HIDDEN) * CELL + CELL // 2),
+                            "vx": random.uniform(-4, 4),
+                            "vy": random.uniform(-6, -0.5),
+                            "life": 32,
+                            "color": col,
+                        })
+        base = [0, 100, 300, 600, 1200][min(n, 4)]
+        bonus = (self.combo - 1) * 80
+        total = (base + bonus) * self.level
+        self.score += total
+        self.lines += n
+        self.level = min(15, 1 + self.lines // 10)
+        self.drop_spd = max(4, 32 - (self.level - 1) * 2)
+        if self.combo > 1:
+            self.msg = f"COMBO x{self.combo}!  +{total}"
+            self.msg_t = 90
+        # Remove all full rows at once, then drop the stack (empty rows on top).
+        full_set = set(full)
+        kept = [self.grid[r][:] for r in range(GRID_H) if r not in full_set]
+        self.grid = [[None] * GRID_W for _ in range(n)] + kept
+        assert len(self.grid) == GRID_H
 
     def _ghost_row(self):
         r=self.cur.row
