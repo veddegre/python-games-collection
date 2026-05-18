@@ -124,9 +124,21 @@ game_over = False
 player_alive = True
 running = True
 
-# Create buttons
-restart_button = Button(SCREEN_WIDTH//2 - 150, SCREEN_HEIGHT//2 + 60, 300, 60, "Restart", reset_game)
-quit_button = Button(SCREEN_WIDTH//2 - 150, SCREEN_HEIGHT//2 + 140, 300, 60, "Quit Game", quit_game)
+# Game-over layout (stacked so text does not overlap buttons)
+BTN_W, BTN_H = 300, 60
+GO_TITLE_Y = SCREEN_HEIGHT // 3
+GO_SCORE_Y = GO_TITLE_Y + 72
+GO_BEST_Y = GO_SCORE_Y + 48
+GO_RESTART_Y = GO_BEST_Y + 52
+GO_QUIT_Y = GO_RESTART_Y + BTN_H + 16
+GO_HINT_Y = GO_QUIT_Y + BTN_H + 28
+
+restart_button = Button(
+    SCREEN_WIDTH // 2 - BTN_W // 2, GO_RESTART_Y, BTN_W, BTN_H, "Restart", reset_game
+)
+quit_button = Button(
+    SCREEN_WIDTH // 2 - BTN_W // 2, GO_QUIT_Y, BTN_W, BTN_H, "Quit Game", quit_game
+)
 
 # Main game loop
 while running:
@@ -203,24 +215,24 @@ while running:
         overlay.fill((0, 0, 0, 180))
         screen.blit(overlay, (0, 0))
         
-        # Game over text
         game_over_text = game_over_font.render("GAME OVER", True, WHITE)
-        screen.blit(game_over_text, 
-                  (SCREEN_WIDTH//2 - game_over_text.get_width()//2, 
-                   SCREEN_HEIGHT//3))
-        
-        # Score text
+        screen.blit(
+            game_over_text,
+            (SCREEN_WIDTH // 2 - game_over_text.get_width() // 2, GO_TITLE_Y),
+        )
+
         final_score_text = myFont.render(f"Final Score: {score}", True, WHITE)
-        screen.blit(final_score_text, 
-                  (SCREEN_WIDTH//2 - final_score_text.get_width()//2, 
-                   SCREEN_HEIGHT//2))
-        
-        # High score text
+        screen.blit(
+            final_score_text,
+            (SCREEN_WIDTH // 2 - final_score_text.get_width() // 2, GO_SCORE_Y),
+        )
+
         high_score_val = get_high_score(GAME_NAME)
         hi_text = myFont.render(f"Best: {high_score_val}", True, (255, 215, 0))
-        screen.blit(hi_text,
-                  (SCREEN_WIDTH//2 - hi_text.get_width()//2,
-                   SCREEN_HEIGHT//2 + 40))
+        screen.blit(
+            hi_text,
+            (SCREEN_WIDTH // 2 - hi_text.get_width() // 2, GO_BEST_Y),
+        )
         
         # Check button hover for highlighting
         restart_button.check_hover(mouse_pos)
@@ -230,11 +242,11 @@ while running:
         restart_button.draw()
         quit_button.draw()
         
-        # Restart instruction text
         key_text = myFont.render("or press R to restart", True, WHITE)
-        screen.blit(key_text, 
-                  (SCREEN_WIDTH//2 - key_text.get_width()//2, 
-                   SCREEN_HEIGHT//2 + 240))
+        screen.blit(
+            key_text,
+            (SCREEN_WIDTH // 2 - key_text.get_width() // 2, GO_HINT_Y),
+        )
 
     clock.tick(30)
     pygame.display.update()
